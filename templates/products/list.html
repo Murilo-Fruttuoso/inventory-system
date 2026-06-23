@@ -18,7 +18,7 @@
         <form class="row g-3" method="get">
             <div class="col-md-5">
                 <label class="form-label">Busca</label>
-                <input type="text" class="form-control" name="q" value="{{ search_term }}" placeholder="Nome, descrição, categoria ou localização">
+                <input type="text" class="form-control" name="q" value="{{ search_term }}" placeholder="Nome, marca, descrição, categoria ou localização">
             </div>
             <div class="col-md-3">
                 <label class="form-label">Categoria</label>
@@ -51,11 +51,11 @@
                 <tr>
                     <th>ID</th>
                     <th>Produto</th>
+                    <th>Marca</th>
                     <th>Categoria</th>
                     <th>Unidade</th>
                     <th>Estoque</th>
-                    <th>Mínimo</th>
-                    <th>Localização</th>
+                    <th>Valor unitário</th>
                     <th class="text-end">Ações</th>
                 </tr>
             </thead>
@@ -67,11 +67,11 @@
                         <div class="fw-semibold">{{ product.name }}</div>
                         <div class="small text-muted">{{ product.description or 'Sem descrição' }}</div>
                     </td>
+                    <td>{{ product.brand or '-' }}</td>
                     <td>{{ product.category }}</td>
                     <td>{{ product.unit }}</td>
                     <td>{{ '%.2f'|format(product.quantity) }}</td>
-                    <td>{{ '%.2f'|format(product.quantity_min) }}</td>
-                    <td>{{ product.location or '-' }}</td>
+                    <td>R$ {{ '%.2f'|format(product.unit_price) }}</td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
                             <a class="btn btn-outline-secondary" href="{{ url_for('main.products_detail', product_id=product.id) }}">Ver</a>

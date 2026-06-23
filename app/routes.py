@@ -90,6 +90,8 @@ def products_new():
         description = request.form.get("description", "").strip()
         location = request.form.get("location", "").strip()
         notes = request.form.get("notes", "").strip()
+        brand = request.form.get("brand", "").strip()
+        unit_price = max(parse_number(request.form.get("unit_price", 0)), 0)
         quantity = max(parse_number(request.form.get("quantity", 0)), 0)
         quantity_min = max(parse_number(request.form.get("quantity_min", 0)), 0)
 
@@ -104,6 +106,8 @@ def products_new():
             description=description,
             location=location,
             notes=notes,
+            brand=brand,
+            unit_price=unit_price,
             quantity=quantity,
             quantity_min=quantity_min,
         )
@@ -171,6 +175,8 @@ def products_edit(product_id):
         product.description = request.form.get("description", "").strip()
         product.location = request.form.get("location", "").strip()
         product.notes = request.form.get("notes", "").strip()
+        product.brand = request.form.get("brand", "").strip()
+        product.unit_price = max(parse_number(request.form.get("unit_price", 0)), 0)
         product.quantity_min = max(parse_number(request.form.get("quantity_min", 0)), 0)
 
         if not product.name or not product.category or not product.unit:

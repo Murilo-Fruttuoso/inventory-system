@@ -4,19 +4,23 @@
     <div class="col-xl-8">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="h3 mb-1">Importação inicial via Excel</h1>
-                <p class="text-muted mb-0">O Excel é usado apenas para entrada inicial e relatórios, nunca como base principal.</p>
+                <h1 class="h3 mb-1">Importar produtos</h1>
+                <p class="text-muted mb-0">Carregue um arquivo Excel com os produtos para criar ou atualizar o inventário.</p>
             </div>
             <a class="btn btn-outline-secondary" href="{{ url_for('main.products_list') }}">Voltar</a>
         </div>
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
-                <form method="post" enctype="multipart/form-data" class="vstack gap-3">
-                    <div>
-                        <label class="form-label">Arquivo Excel</label>
-                        <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required>
+                <form method="post" enctype="multipart/form-data" class="mb-0">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Selecione um arquivo Excel</label>
+                        <input class="form-control" type="file" id="file" name="file" accept=".xlsx,.xls" required>
+                        <small class="text-muted">Formatos aceitos: .xlsx e .xls</small>
                     </div>
-                    <button class="btn btn-primary align-self-end">Importar</button>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Importar</button>
+                        <a href="{{ url_for('main.products_list') }}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
                 </form>
             </div>
         </div>
@@ -24,12 +28,13 @@
             <div class="card-body p-4">
                 <h2 class="h5">Colunas aceitas</h2>
                 <p class="text-muted">Obrigatórias: <strong>nome</strong>, <strong>categoria</strong>, <strong>unidade</strong>.</p>
-                <p class="text-muted mb-2">Opcionais: id, descricao, quantidade, quantidade_minima, localizacao, observacoes.</p>
+                <p class="text-muted mb-2">Opcionais: id, marca, descricao, quantidade, quantidade_minima, preco_unitario, localizacao, observacoes.</p>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>nome</th><th>categoria</th><th>unidade</th><th>quantidade</th><th>quantidade_minima</th></tr></thead>
+                        <thead><tr><th>nome</th><th>categoria</th><th>unidade</th><th>marca</th><th>quantidade</th><th>preco_unitario</th></tr></thead>
                         <tbody>
-                            <tr><td>Parafuso 10mm</td><td>Ferragens</td><td>un</td><td>150</td><td>20</td></tr>
+                            <tr><td>Parafuso 10mm</td><td>Ferragens</td><td>un</td><td>Marca X</td><td>150</td><td>0.50</td></tr>
+                            <tr><td>Óleo mineral</td><td>Lubrificantes</td><td>litro</td><td>Marca Y</td><td>50</td><td>25.00</td></tr>
                         </tbody>
                     </table>
                 </div>

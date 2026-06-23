@@ -60,6 +60,7 @@ def product_query_with_filters(search_term="", category="", low_only=False):
                 Product.description.ilike(like),
                 Product.category.ilike(like),
                 Product.location.ilike(like),
+                Product.brand.ilike(like),
             )
         )
     if category:
@@ -91,11 +92,14 @@ def products_to_dataframe(products):
             {
                 "ID": product.id,
                 "Nome": product.name,
+                "Marca": product.brand or "",
                 "Descrição": product.description or "",
                 "Categoria": product.category,
                 "Unidade": product.unit,
                 "Quantidade": product.quantity,
                 "Quantidade mínima": product.quantity_min,
+                "Valor unitário": f"R$ {product.unit_price:.2f}" if product.unit_price else "R$ 0,00",
+                "Valor total": f"R$ {product.total_value:.2f}" if product.total_value else "R$ 0,00",
                 "Estoque baixo": "Sim" if product.low_stock else "Não",
                 "Localização": product.location or "",
                 "Data de cadastro": product.created_at.strftime("%d/%m/%Y %H:%M"),
@@ -113,12 +117,14 @@ def movements_to_dataframe(movements):
                 "ID": movement.id,
                 "Data": movement.created_at.strftime("%d/%m/%Y %H:%M"),
                 "Produto": movement.product.name,
+                "Marca": movement.product.brand or "",
                 "Categoria": movement.product.category,
                 "Direção": "Entrada" if movement.direction == "IN" else "Saída",
                 "Tipo": movement.reason,
                 "Quantidade": movement.quantity,
                 "Saldo anterior": movement.previous_quantity,
                 "Novo saldo": movement.new_quantity,
+                "Valor unitário": f"R$ {movement.product.unit_price:.2f}" if movement.product.unit_price else "R$ 0,00",
                 "Responsável": movement.user.full_name,
                 "Usuário": movement.user.username,
                 "Observações": movement.note or "",
@@ -176,6 +182,8 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
         description = str(row.get("descricao", "")).strip()
         location = str(row.get("localizacao", "")).strip()
         notes = str(row.get("observacoes", "")).strip()
+        brand = str(row.get("marca", "")).strip()
+        unit_price = max(parse_number(row.get("preco_unitario", 0)), 0)
 
         product = None
         raw_id = str(row.get("id", "")).strip()
@@ -194,6 +202,8 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
                 description=description,
                 location=location,
                 notes=notes,
+                brand=brand,
+                unit_price=unit_price,
             )
             db.session.add(product)
             db.session.flush()
@@ -206,6 +216,8 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
             product.description = description
             product.location = location
             product.notes = notes
+            product.brand = brand
+            product.unit_price = unit_price
             updated += 1
 
         if quantity != product.quantity:
@@ -254,12 +266,14 @@ def sqlite_database_path():
 def dashboard_stats():
     total_products = Product.query.count()
     total_quantity = db.session.query(func.coalesce(func.sum(Product.quantity), 0)).scalar() or 0
+    total_value = db.session.query(func.coalesce(func.sum(Product.quantity * Product.unit_price), 0)).scalar() or 0
     low_stock_count = Product.query.filter(Product.quantity <= Product.quantity_min).count()
     recent_movements = StockMovement.query.order_by(StockMovement.created_at.desc()).limit(10).all()
     critical_products = Product.query.filter(Product.quantity <= Product.quantity_min).order_by(Product.quantity.asc()).limit(10).all()
     return {
         "total_products": total_products,
         "total_quantity": total_quantity,
+        "total_value": total_value,
         "low_stock_count": low_stock_count,
         "recent_movements": recent_movements,
         "critical_products": critical_products,

@@ -3,7 +3,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
         <h1 class="h3 mb-1">{{ product.name }}</h1>
-        <p class="text-muted mb-0">Categoria {{ product.category }} · cadastrado em {{ product.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p class="text-muted mb-0">{% if product.brand %}<strong>Marca:</strong> {{ product.brand }} · {% endif %}Categoria {{ product.category }} · cadastrado em {{ product.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
     </div>
     <div class="d-flex gap-2">
         <a class="btn btn-primary" href="{{ url_for('main.movements_new', product_id=product.id) }}">Nova movimentação</a>
@@ -23,6 +23,8 @@
                     <li><strong>Unidade:</strong> {{ product.unit }}</li>
                     <li><strong>Estoque atual:</strong> <span class="badge text-bg-{{ 'danger' if product.low_stock else 'success' }}">{{ '%.2f'|format(product.quantity) }}</span></li>
                     <li><strong>Estoque mínimo:</strong> {{ '%.2f'|format(product.quantity_min) }}</li>
+                    <li><strong>Valor unitário:</strong> R$ {{ '%.2f'|format(product.unit_price) }}</li>
+                    <li><strong>Valor total:</strong> R$ {{ '%.2f'|format(product.total_value) }}</li>
                     <li><strong>Localização:</strong> {{ product.location or '-' }}</li>
                     <li><strong>Descrição:</strong> {{ product.description or 'Sem descrição' }}</li>
                     <li><strong>Observações:</strong> {{ product.notes or 'Sem observações' }}</li>
