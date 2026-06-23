@@ -19,7 +19,16 @@
                 <label class="form-label">Data final</label>
                 <input type="date" class="form-control" name="end_date" value="{{ end_date }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">Unidade/Filial</label>
+                <select class="form-select" name="store">
+                    <option value="">Todas</option>
+                    {% for s in stores %}
+                    <option value="{{ s }}" {% if selected_store == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Produto</label>
                 <select class="form-select" name="product_id">
                     <option value="">Todos</option>
@@ -45,9 +54,11 @@
                     <option value="OUT" {% if selected_direction == 'OUT' %}selected{% endif %}>Saída</option>
                 </select>
             </div>
-            <div class="col-md-2 d-flex align-items-end gap-2">
+            <div class="col-md-1 d-flex align-items-end gap-2">
                 <button class="btn btn-primary flex-grow-1">Filtrar</button>
-                <a class="btn btn-outline-secondary" href="{{ url_for('main.movements_list') }}">Limpar</a>
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('main.movements_list') }}">Limpar filtros</a>
             </div>
         </form>
     </div>
@@ -60,6 +71,7 @@
                 <tr>
                     <th>Data</th>
                     <th>Produto</th>
+                    <th>Unidade/Filial</th>
                     <th>Marca</th>
                     <th>Categoria</th>
                     <th>Direção</th>
@@ -76,6 +88,7 @@
                 <tr>
                     <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                     <td>{{ movement.product.name }}</td>
+                    <td><span class="badge text-bg-secondary">{{ movement.store or movement.product.store or '-' }}</span></td>
                     <td>{{ movement.product.brand or '-' }}</td>
                     <td>{{ movement.product.category }}</td>
                     <td><span class="badge text-bg-{{ 'success' if movement.direction == 'IN' else 'danger' }}">{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }}</span></td>
@@ -87,7 +100,7 @@
                     <td>{{ movement.user.full_name }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="11" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td></tr>
+                <tr><td colspan="12" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -100,7 +113,7 @@
         {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
             {% if p %}
             <li class="page-item {% if p == pagination.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.movements_list', page=p, start_date=start_date, end_date=end_date, product_id=selected_product_id, category=selected_category, direction=selected_direction) }}">{{ p }}</a>
+                <a class="page-link" href="{{ url_for('main.movements_list', page=p, start_date=start_date, end_date=end_date, product_id=selected_product_id, category=selected_category, direction=selected_direction, store=selected_store) }}">{{ p }}</a>
             </li>
             {% else %}
             <li class="page-item disabled"><span class="page-link">…</span></li>

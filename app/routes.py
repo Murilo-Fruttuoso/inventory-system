@@ -27,6 +27,7 @@ from app.services import (
     dashboard_stats,
     dataframe_to_excel_response,
     distinct_categories,
+    distinct_stores,
     import_products_from_excel,
     log_action,
     movement_query_with_filters,
@@ -54,9 +55,10 @@ def products_list():
     page = request.args.get("page", 1, type=int)
     search_term = request.args.get("q", "").strip()
     category = request.args.get("category", "").strip()
+    store = request.args.get("store", "").strip()
     low_only = request.args.get("low_only", "0") == "1"
 
-    pagination = product_query_with_filters(search_term, category, low_only).paginate(
+    pagination = product_query_with_filters(search_term, category, low_only, store=store).paginate(
         page=page,
         per_page=current_app.config["ITEMS_PER_PAGE"],
         error_out=False,
@@ -67,8 +69,10 @@ def products_list():
         pagination=pagination,
         products=pagination.items,
         categories=distinct_categories(),
+        stores=distinct_stores(),
         search_term=search_term,
         category=category,
+        store=store,
         low_only=low_only,
     )
 
@@ -88,6 +92,7 @@ def products_new():
         category = request.form.get("category", "").strip()
         unit = request.form.get("unit", "").strip()
         brand = request.form.get("brand", "").strip()
+        store = request.form.get("store", "").strip()
         description = request.form.get("description", "").strip()
         location = request.form.get("location", "").strip()
         notes = request.form.get("notes", "").strip()
@@ -97,12 +102,13 @@ def products_new():
 
         if not name or not category or not unit:
             flash("Nome, categoria e unidade são obrigatórios.", "danger")
-            return render_template("products/form.html", product=None)
+            return render_template("products/form.html", product=None, stores=distinct_stores())
 
         product = Product(
             name=name,
             category=category,
             brand=brand or None,
+            store=store,
             unit=unit,
             unit_value=unit_value,
             description=description,
@@ -119,6 +125,7 @@ def products_new():
                 movement = StockMovement(
                     product_id=product.id,
                     user_id=current_user.id,
+                    store=store,
                     direction="IN",
                     reason="saldo_inicial",
                     quantity=quantity,
@@ -131,7 +138,7 @@ def products_new():
             log_action(
                 current_user,
                 "produto_criado",
-                f"Produto {name} cadastrado no sistema.",
+                f"Produto {name} cadastrado na unidade '{store or 'não definida'}'.",
                 entity_type="product",
                 entity_id=product.id,
                 ip_address=request.remote_addr,
@@ -142,9 +149,9 @@ def products_new():
             return redirect(url_for("main.products_list"))
         except IntegrityError:
             db.session.rollback()
-            flash("Já existe um produto com o mesmo nome e categoria.", "danger")
+            flash("Já existe um produto com o mesmo nome, categoria e unidade.", "danger")
 
-    return render_template("products/form.html", product=None)
+    return render_template("products/form.html", product=None, stores=distinct_stores())
 
 
 @main_bp.route("/products/<int:product_id>")
@@ -172,6 +179,7 @@ def products_edit(product_id):
         product.name = request.form.get("name", "").strip()
         product.category = request.form.get("category", "").strip()
         product.brand = request.form.get("brand", "").strip() or None
+        product.store = request.form.get("store", "").strip()
         product.unit = request.form.get("unit", "").strip()
         product.unit_value = max(parse_number(request.form.get("unit_value", 0)), 0.0)
         product.description = request.form.get("description", "").strip()
@@ -181,7 +189,7 @@ def products_edit(product_id):
 
         if not product.name or not product.category or not product.unit:
             flash("Nome, categoria e unidade são obrigatórios.", "danger")
-            return render_template("products/form.html", product=product)
+            return render_template("products/form.html", product=product, stores=distinct_stores())
 
         try:
             log_action(
@@ -198,9 +206,9 @@ def products_edit(product_id):
             return redirect(url_for("main.products_detail", product_id=product.id))
         except IntegrityError:
             db.session.rollback()
-            flash("Já existe um produto com o mesmo nome e categoria.", "danger")
+            flash("Já existe um produto com o mesmo nome, categoria e unidade.", "danger")
 
-    return render_template("products/form.html", product=product)
+    return render_template("products/form.html", product=product, stores=distinct_stores())
 
 
 @main_bp.route("/movements")
@@ -212,6 +220,7 @@ def movements_list():
     product_id = request.args.get("product_id", "")
     category = request.args.get("category", "")
     direction = request.args.get("direction", "")
+    store = request.args.get("store", "")
 
     pagination = movement_query_with_filters(
         start_date=start_date,
@@ -219,6 +228,7 @@ def movements_list():
         product_id=product_id,
         category=category,
         direction=direction,
+        store=store,
     ).paginate(page=page, per_page=current_app.config["ITEMS_PER_PAGE"], error_out=False)
 
     return render_template(
@@ -227,11 +237,13 @@ def movements_list():
         movements=pagination.items,
         products=Product.query.order_by(Product.name.asc()).all(),
         categories=distinct_categories(),
+        stores=distinct_stores(),
         selected_product_id=product_id,
         start_date=start_date,
         end_date=end_date,
         selected_category=category,
         selected_direction=direction,
+        selected_store=store,
     )
 
 
@@ -246,6 +258,7 @@ def movements_new():
         reason = request.form.get("reason", "")
         note = request.form.get("note", "").strip()
         quantity = parse_number(request.form.get("quantity", 0))
+        store = request.form.get("store", "").strip()
 
         product = Product.query.get_or_404(product_id)
 
@@ -265,6 +278,7 @@ def movements_new():
         movement = StockMovement(
             product_id=product.id,
             user_id=current_user.id,
+            store=store or product.store,
             direction=direction,
             reason=reason or ("entrada_manual" if direction == "IN" else "saida_manual"),
             quantity=quantity,
@@ -278,7 +292,7 @@ def movements_new():
             log_action(
                 current_user,
                 "movimentacao_estoque",
-                f"Movimentação {direction} no produto {product.name} com quantidade {quantity}.",
+                f"Movimentação {direction} no produto {product.name} (unidade: {store or product.store or 'não definida'}) qtd {quantity}.",
                 entity_type="movement",
                 entity_id=movement.id,
                 ip_address=request.remote_addr,
@@ -300,6 +314,7 @@ def movements_new():
     return render_template(
         "movements/form.html",
         products=Product.query.order_by(Product.name.asc()).all(),
+        stores=distinct_stores(),
         selected_product_id=selected_product_id,
     )
 
@@ -309,17 +324,20 @@ def movements_new():
 def reports():
     stock_search = request.args.get("stock_q", "").strip()
     stock_category = request.args.get("stock_category", "").strip()
+    stock_store = request.args.get("stock_store", "").strip()
     stock_low_only = request.args.get("stock_low_only", "0") == "1"
     start_date = request.args.get("start_date", "")
     end_date = request.args.get("end_date", "")
     product_id = request.args.get("product_id", "")
     movement_category = request.args.get("movement_category", "")
+    movement_store = request.args.get("movement_store", "")
     direction = request.args.get("direction", "")
 
     filtered_products = product_query_with_filters(
         search_term=stock_search,
         category=stock_category,
         low_only=stock_low_only,
+        store=stock_store,
     ).all()
 
     filtered_movements = movement_query_with_filters(
@@ -328,24 +346,28 @@ def reports():
         product_id=product_id,
         category=movement_category,
         direction=direction,
+        store=movement_store,
     ).limit(50).all()
 
-    low_stock_products = product_query_with_filters(low_only=True).all()
+    low_stock_products = product_query_with_filters(low_only=True, store=stock_store).all()
 
     return render_template(
         "reports.html",
         categories=distinct_categories(),
+        stores=distinct_stores(),
         products=Product.query.order_by(Product.name.asc()).all(),
         filtered_products=filtered_products,
         filtered_movements=filtered_movements,
         low_stock_products=low_stock_products,
         stock_search=stock_search,
         stock_category=stock_category,
+        stock_store=stock_store,
         stock_low_only=stock_low_only,
         start_date=start_date,
         end_date=end_date,
         selected_product_id=product_id,
         movement_category=movement_category,
+        movement_store=movement_store,
         selected_direction=direction,
     )
 
@@ -357,6 +379,7 @@ def export_current_stock():
         search_term=request.args.get("stock_q", "").strip(),
         category=request.args.get("stock_category", "").strip(),
         low_only=request.args.get("stock_low_only", "0") == "1",
+        store=request.args.get("stock_store", "").strip(),
     ).all()
     output, filename = dataframe_to_excel_response(
         {"Estoque atual": products_to_dataframe(products)},
@@ -386,6 +409,7 @@ def export_movements():
         product_id=request.args.get("product_id", ""),
         category=request.args.get("movement_category", ""),
         direction=request.args.get("direction", ""),
+        store=request.args.get("movement_store", ""),
     ).all()
     output, filename = dataframe_to_excel_response(
         {"Movimentações": movements_to_dataframe(movements)},
@@ -409,7 +433,10 @@ def export_movements():
 @main_bp.route("/reports/export/low-stock")
 @login_required
 def export_low_stock():
-    products = product_query_with_filters(low_only=True).all()
+    products = product_query_with_filters(
+        low_only=True,
+        store=request.args.get("stock_store", "").strip(),
+    ).all()
     output, filename = dataframe_to_excel_response(
         {"Estoque baixo": products_to_dataframe(products)},
         current_timestamp_for_filename("estoque_baixo", "xlsx"),

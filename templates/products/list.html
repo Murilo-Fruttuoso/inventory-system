@@ -16,11 +16,20 @@
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <form class="row g-3" method="get">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label">Busca</label>
                 <input type="text" class="form-control" name="q" value="{{ search_term }}" placeholder="Nome, descrição, categoria ou localização">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label">Unidade/Filial</label>
+                <select class="form-select" name="store">
+                    <option value="">Todas</option>
+                    {% for s in stores %}
+                    <option value="{{ s }}" {% if s == store %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label class="form-label">Categoria</label>
                 <select class="form-select" name="category">
                     <option value="">Todas</option>
@@ -51,9 +60,10 @@
                 <tr>
                     <th>ID</th>
                     <th>Produto</th>
+                    <th>Unidade/Filial</th>
                     <th>Marca</th>
                     <th>Categoria</th>
-                    <th>Unidade</th>
+                    <th>Unid.</th>
                     <th>Valor Unit.</th>
                     <th>Estoque</th>
                     <th>Valor Total</th>
@@ -70,6 +80,7 @@
                         <div class="fw-semibold">{{ product.name }}</div>
                         <div class="small text-muted">{{ product.description or 'Sem descrição' }}</div>
                     </td>
+                    <td><span class="badge text-bg-secondary">{{ product.store or '-' }}</span></td>
                     <td>{{ product.brand or '-' }}</td>
                     <td>{{ product.category }}</td>
                     <td>{{ product.unit }}</td>
@@ -89,7 +100,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="11" class="text-center py-4 text-muted">Nenhum produto encontrado.</td></tr>
+                <tr><td colspan="12" class="text-center py-4 text-muted">Nenhum produto encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -102,7 +113,7 @@
         {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
             {% if p %}
             <li class="page-item {% if p == pagination.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.products_list', page=p, q=search_term, category=category, low_only=1 if low_only else 0) }}">{{ p }}</a>
+                <a class="page-link" href="{{ url_for('main.products_list', page=p, q=search_term, category=category, store=store, low_only=1 if low_only else 0) }}">{{ p }}</a>
             </li>
             {% else %}
             <li class="page-item disabled"><span class="page-link">…</span></li>

@@ -12,7 +12,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <form method="post" class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <label class="form-label">Produto</label>
                         <select class="form-select" name="product_id" id="product_id" required onchange="updateProductInfo(this)">
                             <option value="">Selecione</option>
@@ -20,15 +20,27 @@
                             <option value="{{ product.id }}"
                                 data-brand="{{ product.brand or '-' }}"
                                 data-unit-value="{{ '%.2f'|format(product.unit_value or 0) }}"
+                                data-store="{{ product.store or '' }}"
                                 {% if selected_product_id == product.id %}selected{% endif %}>
-                                {{ product.name }} (saldo {{ '%.2f'|format(product.quantity) }})
+                                {{ product.name }}{% if product.store %} [{{ product.store }}]{% endif %} (saldo {{ '%.2f'|format(product.quantity) }})
                             </option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">Marca</label>
                         <input class="form-control" id="info_brand" readonly value="">
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Unidade/Filial <span class="text-danger">*</span></label>
+                        <input class="form-control" name="store" id="field_store" required
+                               list="store_suggestions"
+                               placeholder="Ex.: Ribeirão, Brasília...">
+                        <datalist id="store_suggestions">
+                            {% for s in stores %}<option value="{{ s }}">{% endfor %}
+                        </datalist>
+                        <div class="form-text">Unidade onde a movimentação ocorreu.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Valor unitário (R$)</label>
@@ -37,14 +49,14 @@
                             <input class="form-control" id="info_unit_value" readonly value="">
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Direção</label>
                         <select class="form-select" name="direction" required>
                             <option value="IN">Entrada</option>
                             <option value="OUT">Saída</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label">Quantidade</label>
                         <input class="form-control" type="number" name="quantity" step="any" min="0.01" required>
                     </div>
@@ -73,6 +85,11 @@ function updateProductInfo(select) {
     const opt = select.options[select.selectedIndex];
     document.getElementById('info_brand').value = opt.dataset.brand || '';
     document.getElementById('info_unit_value').value = opt.dataset.unitValue || '';
+    // Pre-fill store from product, but allow user to change
+    const storeField = document.getElementById('field_store');
+    if (opt.dataset.store && !storeField.value) {
+        storeField.value = opt.dataset.store;
+    }
 }
 window.addEventListener('DOMContentLoaded', function() {
     const sel = document.getElementById('product_id');

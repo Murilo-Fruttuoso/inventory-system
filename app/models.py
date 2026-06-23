@@ -46,6 +46,7 @@ class Product(db.Model):
     description = db.Column(db.Text)
     category = db.Column(db.String(100), nullable=False, index=True)
     brand = db.Column(db.String(100))
+    store = db.Column(db.String(100), nullable=False, default="", index=True)
     unit = db.Column(db.String(30), nullable=False)
     unit_value = db.Column(db.Float, nullable=False, default=0.0)
     quantity = db.Column(db.Float, nullable=False, default=0)
@@ -73,7 +74,7 @@ class Product(db.Model):
         db.CheckConstraint(
             "quantity_min >= 0", name="ck_products_quantity_min_non_negative"
         ),
-        db.UniqueConstraint("name", "category", name="uq_products_name_category"),
+        db.UniqueConstraint("name", "category", "store", name="uq_products_name_category_store"),
     )
 
     __mapper_args__ = {"version_id_col": version_id}
@@ -93,6 +94,7 @@ class StockMovement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey("products.id"), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    store = db.Column(db.String(100), nullable=False, default="", index=True)
     direction = db.Column(db.String(10), nullable=False, index=True)
     reason = db.Column(db.String(60), nullable=False)
     quantity = db.Column(db.Float, nullable=False)

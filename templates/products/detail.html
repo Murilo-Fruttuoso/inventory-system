@@ -20,8 +20,9 @@
                 <h2 class="h5">Resumo</h2>
                 <ul class="list-unstyled mb-0 vstack gap-2 small">
                     <li><strong>ID:</strong> {{ product.id }}</li>
+                    <li><strong>Unidade/Filial:</strong> <span class="badge text-bg-secondary fs-6">{{ product.store or '-' }}</span></li>
                     <li><strong>Marca:</strong> {{ product.brand or '-' }}</li>
-                    <li><strong>Unidade:</strong> {{ product.unit }}</li>
+                    <li><strong>Unid. de medida:</strong> {{ product.unit }}</li>
                     <li><strong>Valor unitário:</strong> R$ {{ '%.2f'|format(product.unit_value or 0) }}</li>
                     <li><strong>Estoque atual:</strong> <span class="badge text-bg-{{ 'danger' if product.low_stock else 'success' }}">{{ '%.2f'|format(product.quantity) }}</span></li>
                     <li><strong>Valor total em estoque:</strong> <strong class="text-primary">R$ {{ '%.2f'|format(product.total_stock_value) }}</strong></li>

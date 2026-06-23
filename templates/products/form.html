@@ -21,8 +21,19 @@
                         <input class="form-control" name="category" required value="{{ product.category if product else '' }}">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Unidade</label>
+                        <label class="form-label">Unid. de medida</label>
                         <input class="form-control" name="unit" required placeholder="un, kg, litro..." value="{{ product.unit if product else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Unidade/Filial <span class="text-danger">*</span></label>
+                        <input class="form-control" name="store" required
+                               list="store_suggestions"
+                               placeholder="Ex.: Ribeirão, Brasília..."
+                               value="{{ product.store if product else '' }}">
+                        <datalist id="store_suggestions">
+                            {% for s in stores %}<option value="{{ s }}">{% endfor %}
+                        </datalist>
+                        <div class="form-text">Informe a unidade/filial onde este produto está.</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Marca</label>

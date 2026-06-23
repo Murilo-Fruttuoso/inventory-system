@@ -35,6 +35,11 @@ def distinct_categories():
     return [row[0] for row in rows if row[0]]
 
 
+def distinct_stores():
+    rows = db.session.query(Product.store).filter(Product.store.isnot(None), Product.store != "").distinct().order_by(Product.store).all()
+    return [row[0] for row in rows if row[0]]
+
+
 def log_action(user, action, description, entity_type=None, entity_id=None, ip_address=None, commit=True):
     log = ActionLog(
         user_id=getattr(user, "id", None),
@@ -50,7 +55,7 @@ def log_action(user, action, description, entity_type=None, entity_id=None, ip_a
     return log
 
 
-def product_query_with_filters(search_term="", category="", low_only=False, brand=""):
+def product_query_with_filters(search_term="", category="", low_only=False, brand="", store=""):
     query = Product.query
     if search_term:
         like = f"%{search_term}%"
@@ -67,12 +72,14 @@ def product_query_with_filters(search_term="", category="", low_only=False, bran
         query = query.filter(Product.category == category)
     if brand:
         query = query.filter(Product.brand.ilike(f"%{brand}%"))
+    if store:
+        query = query.filter(Product.store == store)
     if low_only:
         query = query.filter(Product.quantity <= Product.quantity_min)
-    return query.order_by(Product.name.asc())
+    return query.order_by(Product.store.asc(), Product.name.asc())
 
 
-def movement_query_with_filters(start_date="", end_date="", product_id="", category="", direction=""):
+def movement_query_with_filters(start_date="", end_date="", product_id="", category="", direction="", store=""):
     query = StockMovement.query.join(Product).join(StockMovement.user)
     if start_date:
         query = query.filter(func.date(StockMovement.created_at) >= start_date)
@@ -84,6 +91,8 @@ def movement_query_with_filters(start_date="", end_date="", product_id="", categ
         query = query.filter(Product.category == category)
     if direction:
         query = query.filter(StockMovement.direction == direction)
+    if store:
+        query = query.filter(StockMovement.store == store)
     return query.order_by(StockMovement.created_at.desc())
 
 
@@ -93,11 +102,12 @@ def products_to_dataframe(products):
         rows.append(
             {
                 "ID": product.id,
+                "Unidade/Filial": product.store or "",
                 "Nome": product.name,
                 "Marca": product.brand or "",
                 "Descrição": product.description or "",
                 "Categoria": product.category,
-                "Unidade": product.unit,
+                "Unid. Medida": product.unit,
                 "Valor Unitário (R$)": product.unit_value or 0.0,
                 "Quantidade": product.quantity,
                 "Valor Total (R$)": round(product.total_stock_value, 2),
@@ -119,6 +129,7 @@ def movements_to_dataframe(movements):
             {
                 "ID": movement.id,
                 "Data": movement.created_at.strftime("%d/%m/%Y %H:%M"),
+                "Unidade/Filial": movement.store or "",
                 "Produto": movement.product.name,
                 "Marca": movement.product.brand or "",
                 "Categoria": movement.product.category,
@@ -267,9 +278,16 @@ def dashboard_stats():
     low_stock_count = Product.query.filter(Product.quantity <= Product.quantity_min).count()
     recent_movements = StockMovement.query.order_by(StockMovement.created_at.desc()).limit(10).all()
     critical_products = Product.query.filter(Product.quantity <= Product.quantity_min).order_by(Product.quantity.asc()).limit(10).all()
-    # Valor total em estoque = soma(unit_value * quantity) para todos os produtos
     all_products = Product.query.all()
     total_stock_value = sum(p.total_stock_value for p in all_products)
+    # Resumo por unidade/filial
+    store_summary = {}
+    for p in all_products:
+        s = p.store or "(sem unidade)"
+        if s not in store_summary:
+            store_summary[s] = {"products": 0, "value": 0.0}
+        store_summary[s]["products"] += 1
+        store_summary[s]["value"] += p.total_stock_value
     return {
         "total_products": total_products,
         "total_quantity": total_quantity,
@@ -277,6 +295,7 @@ def dashboard_stats():
         "recent_movements": recent_movements,
         "critical_products": critical_products,
         "total_stock_value": total_stock_value,
+        "store_summary": store_summary,
     }
 
 

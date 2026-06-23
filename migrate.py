@@ -54,7 +54,44 @@ def migrate_database():
                         raise
             else:
                 print("✓ 'unit_value' column already exists!")
-            
+
+            # Re-fetch columns after possible additions
+            inspector = inspect(db.engine)
+            products_columns = [col['name'] for col in inspector.get_columns('products')]
+
+            if 'store' not in products_columns:
+                print("Adding 'store' column to products table...")
+                try:
+                    db.session.execute(text("ALTER TABLE products ADD COLUMN store VARCHAR(100) NOT NULL DEFAULT ''"))
+                    db.session.commit()
+                    print("✓ 'store' column added successfully!")
+                except exc.OperationalError as e:
+                    if "duplicate column name" in str(e) or "already exists" in str(e):
+                        print("✓ 'store' column already exists!")
+                        db.session.rollback()
+                    else:
+                        raise
+            else:
+                print("✓ 'store' column already exists (products)!")
+
+            # Check and add 'store' to stock_movements table
+            print("Checking stock_movements table...")
+            movements_columns = [col['name'] for col in inspector.get_columns('stock_movements')]
+            if 'store' not in movements_columns:
+                print("Adding 'store' column to stock_movements table...")
+                try:
+                    db.session.execute(text("ALTER TABLE stock_movements ADD COLUMN store VARCHAR(100) NOT NULL DEFAULT ''"))
+                    db.session.commit()
+                    print("✓ 'store' column added to stock_movements!")
+                except exc.OperationalError as e:
+                    if "duplicate column name" in str(e) or "already exists" in str(e):
+                        print("✓ 'store' column already exists in stock_movements!")
+                        db.session.rollback()
+                    else:
+                        raise
+            else:
+                print("✓ 'store' column already exists (stock_movements)!")
+
             # Check if purchases table needs to be created
             print("Checking purchases table...")
             existing_tables = inspector.get_table_names()

@@ -3,7 +3,7 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
         <h1 class="h3 mb-1">Relatórios e exportações</h1>
-        <p class="text-muted mb-0">Geração de arquivos Excel com filtros por produto, categoria e período.</p>
+        <p class="text-muted mb-0">Geração de arquivos Excel com filtros por unidade, produto, categoria e período.</p>
     </div>
     {% if current_user.role == 'admin' %}
     <a class="btn btn-outline-primary" href="{{ url_for('main.backup_download') }}">Backup simples</a>
@@ -11,17 +11,27 @@
 </div>
 
 <div class="row g-4">
+    <!-- Estoque atual -->
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Estoque atual</h2>
-                <a class="btn btn-sm btn-success" href="{{ url_for('main.export_current_stock', stock_q=stock_search, stock_category=stock_category, stock_low_only=1 if stock_low_only else 0) }}">Exportar Excel</a>
+                <a class="btn btn-sm btn-success" href="{{ url_for('main.export_current_stock', stock_q=stock_search, stock_category=stock_category, stock_store=stock_store, stock_low_only=1 if stock_low_only else 0) }}">Exportar Excel</a>
             </div>
             <div class="card-body">
                 <form method="get" class="row g-3 mb-3">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label class="form-label">Busca</label>
                         <input class="form-control" name="stock_q" value="{{ stock_search }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Unidade/Filial</label>
+                        <select class="form-select" name="stock_store">
+                            <option value="">Todas</option>
+                            {% for s in stores %}
+                            <option value="{{ s }}" {% if stock_store == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Categoria</label>
@@ -32,24 +42,36 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6">
                         <label class="form-label">Críticos</label>
                         <select class="form-select" name="stock_low_only">
                             <option value="0" {% if not stock_low_only %}selected{% endif %}>Todos</option>
                             <option value="1" {% if stock_low_only %}selected{% endif %}>Baixo estoque</option>
                         </select>
                     </div>
-                    <div class="col-12 d-flex justify-content-end">
+                    <div class="col-md-6 d-flex align-items-end justify-content-end">
                         <button class="btn btn-primary">Aplicar</button>
                     </div>
                 </form>
                 <div class="table-responsive preview-table">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Produto</th><th>Marca</th><th>Categoria</th><th>Valor Unit.</th><th>Qtd.</th><th>Valor Total</th><th>Mínimo</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Unidade</th>
+                                <th>Marca</th>
+                                <th>Categoria</th>
+                                <th>Valor Unit.</th>
+                                <th>Qtd.</th>
+                                <th>Valor Total</th>
+                                <th>Mínimo</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             {% for product in filtered_products[:10] %}
                             <tr>
                                 <td>{{ product.name }}</td>
+                                <td><span class="badge text-bg-secondary">{{ product.store or '-' }}</span></td>
                                 <td>{{ product.brand or '-' }}</td>
                                 <td>{{ product.category }}</td>
                                 <td>R$ {{ '%.2f'|format(product.unit_value or 0) }}</td>
@@ -58,20 +80,24 @@
                                 <td>{{ '%.2f'|format(product.quantity_min) }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="7" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                {% if filtered_products|length > 10 %}
+                <div class="text-muted small mt-2">Exibindo 10 de {{ filtered_products|length }} registros. Exporte o Excel para ver todos.</div>
+                {% endif %}
             </div>
         </div>
     </div>
 
+    <!-- Movimentações por período -->
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Movimentações por período</h2>
-                <a class="btn btn-sm btn-success" href="{{ url_for('main.export_movements', start_date=start_date, end_date=end_date, product_id=selected_product_id, movement_category=movement_category, direction=selected_direction) }}">Exportar Excel</a>
+                <a class="btn btn-sm btn-success" href="{{ url_for('main.export_movements', start_date=start_date, end_date=end_date, product_id=selected_product_id, movement_category=movement_category, movement_store=movement_store, direction=selected_direction) }}">Exportar Excel</a>
             </div>
             <div class="card-body">
                 <form method="get" class="row g-3 mb-3">
@@ -84,6 +110,15 @@
                         <input class="form-control" type="date" name="end_date" value="{{ end_date }}">
                     </div>
                     <div class="col-md-3">
+                        <label class="form-label">Unidade/Filial</label>
+                        <select class="form-select" name="movement_store">
+                            <option value="">Todas</option>
+                            {% for s in stores %}
+                            <option value="{{ s }}" {% if movement_store == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label class="form-label">Produto</label>
                         <select class="form-select" name="product_id">
                             <option value="">Todos</option>
@@ -92,7 +127,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label class="form-label">Direção</label>
                         <select class="form-select" name="direction">
                             <option value="">Todas</option>
@@ -100,7 +135,7 @@
                             <option value="OUT" {% if selected_direction == 'OUT' %}selected{% endif %}>Saída</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-5">
                         <label class="form-label">Categoria</label>
                         <select class="form-select" name="movement_category">
                             <option value="">Todas</option>
@@ -109,48 +144,73 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end justify-content-end">
+                    <div class="col-md-3 d-flex align-items-end justify-content-end">
                         <button class="btn btn-primary">Aplicar</button>
                     </div>
                 </form>
                 <div class="table-responsive preview-table">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Data</th><th>Produto</th><th>Marca</th><th>Tipo</th><th>Qtd.</th><th>Valor Unit.</th><th>Valor Mov.</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Produto</th>
+                                <th>Unidade</th>
+                                <th>Tipo</th>
+                                <th>Qtd.</th>
+                                <th>Valor Mov.</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             {% for movement in filtered_movements[:10] %}
                             <tr>
                                 <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                 <td>{{ movement.product.name }}</td>
-                                <td>{{ movement.product.brand or '-' }}</td>
+                                <td><span class="badge text-bg-secondary">{{ movement.store or movement.product.store or '-' }}</span></td>
                                 <td>{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }} / {{ movement.reason }}</td>
                                 <td>{{ '%.2f'|format(movement.quantity) }}</td>
-                                <td>R$ {{ '%.2f'|format(movement.product.unit_value or 0) }}</td>
                                 <td>R$ {{ '%.2f'|format((movement.product.unit_value or 0) * movement.quantity) }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="7" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
+                {% if filtered_movements|length > 10 %}
+                <div class="text-muted small mt-2">Exibindo 10 de {{ filtered_movements|length }} registros. Exporte o Excel para ver todos.</div>
+                {% endif %}
             </div>
         </div>
     </div>
 
+    <!-- Estoque baixo -->
     <div class="col-12">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">Produtos com estoque baixo</h2>
-                <a class="btn btn-sm btn-success" href="{{ url_for('main.export_low_stock') }}">Exportar Excel</a>
+                <a class="btn btn-sm btn-success" href="{{ url_for('main.export_low_stock', stock_store=stock_store) }}">Exportar Excel</a>
             </div>
             <div class="card-body">
                 <div class="table-responsive preview-table">
                     <table class="table align-middle mb-0">
-                        <thead><tr><th>Produto</th><th>Marca</th><th>Categoria</th><th>Valor Unit.</th><th>Estoque</th><th>Valor Total</th><th>Mínimo</th><th>Localização</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Unidade/Filial</th>
+                                <th>Marca</th>
+                                <th>Categoria</th>
+                                <th>Valor Unit.</th>
+                                <th>Estoque</th>
+                                <th>Valor Total</th>
+                                <th>Mínimo</th>
+                                <th>Localização</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             {% for product in low_stock_products %}
                             <tr class="table-danger">
                                 <td>{{ product.name }}</td>
+                                <td><span class="badge text-bg-secondary">{{ product.store or '-' }}</span></td>
                                 <td>{{ product.brand or '-' }}</td>
                                 <td>{{ product.category }}</td>
                                 <td>R$ {{ '%.2f'|format(product.unit_value or 0) }}</td>
@@ -160,7 +220,7 @@
                                 <td>{{ product.location or '-' }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="8" class="text-center text-muted py-3">Nenhum produto em situação crítica.</td></tr>
+                            <tr><td colspan="9" class="text-center text-muted py-3">Nenhum produto em situação crítica.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
