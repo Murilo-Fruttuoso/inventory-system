@@ -87,11 +87,13 @@ def products_new():
         name = request.form.get("name", "").strip()
         category = request.form.get("category", "").strip()
         unit = request.form.get("unit", "").strip()
+        brand = request.form.get("brand", "").strip()
         description = request.form.get("description", "").strip()
         location = request.form.get("location", "").strip()
         notes = request.form.get("notes", "").strip()
         quantity = max(parse_number(request.form.get("quantity", 0)), 0)
         quantity_min = max(parse_number(request.form.get("quantity_min", 0)), 0)
+        unit_value = max(parse_number(request.form.get("unit_value", 0)), 0.0)
 
         if not name or not category or not unit:
             flash("Nome, categoria e unidade são obrigatórios.", "danger")
@@ -100,7 +102,9 @@ def products_new():
         product = Product(
             name=name,
             category=category,
+            brand=brand or None,
             unit=unit,
+            unit_value=unit_value,
             description=description,
             location=location,
             notes=notes,
@@ -167,7 +171,9 @@ def products_edit(product_id):
     if request.method == "POST":
         product.name = request.form.get("name", "").strip()
         product.category = request.form.get("category", "").strip()
+        product.brand = request.form.get("brand", "").strip() or None
         product.unit = request.form.get("unit", "").strip()
+        product.unit_value = max(parse_number(request.form.get("unit_value", 0)), 0.0)
         product.description = request.form.get("description", "").strip()
         product.location = request.form.get("location", "").strip()
         product.notes = request.form.get("notes", "").strip()

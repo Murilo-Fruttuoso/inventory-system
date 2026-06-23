@@ -14,12 +14,28 @@
                 <form method="post" class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Produto</label>
-                        <select class="form-select" name="product_id" required>
+                        <select class="form-select" name="product_id" id="product_id" required onchange="updateProductInfo(this)">
                             <option value="">Selecione</option>
                             {% for product in products %}
-                            <option value="{{ product.id }}" {% if selected_product_id == product.id %}selected{% endif %}>{{ product.name }} (saldo {{ '%.2f'|format(product.quantity) }})</option>
+                            <option value="{{ product.id }}"
+                                data-brand="{{ product.brand or '-' }}"
+                                data-unit-value="{{ '%.2f'|format(product.unit_value or 0) }}"
+                                {% if selected_product_id == product.id %}selected{% endif %}>
+                                {{ product.name }} (saldo {{ '%.2f'|format(product.quantity) }})
+                            </option>
                             {% endfor %}
                         </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Marca</label>
+                        <input class="form-control" id="info_brand" readonly value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Valor unitário (R$)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input class="form-control" id="info_unit_value" readonly value="">
+                        </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Direção</label>
@@ -49,4 +65,18 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateProductInfo(select) {
+    const opt = select.options[select.selectedIndex];
+    document.getElementById('info_brand').value = opt.dataset.brand || '';
+    document.getElementById('info_unit_value').value = opt.dataset.unitValue || '';
+}
+window.addEventListener('DOMContentLoaded', function() {
+    const sel = document.getElementById('product_id');
+    if (sel) updateProductInfo(sel);
+});
+</script>
 {% endblock %}

@@ -60,10 +60,13 @@
                 <tr>
                     <th>Data</th>
                     <th>Produto</th>
+                    <th>Marca</th>
                     <th>Categoria</th>
                     <th>Direção</th>
                     <th>Tipo</th>
                     <th>Qtd.</th>
+                    <th>Valor Unit.</th>
+                    <th>Valor Mov.</th>
                     <th>Saldo</th>
                     <th>Responsável</th>
                 </tr>
@@ -73,15 +76,18 @@
                 <tr>
                     <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                     <td>{{ movement.product.name }}</td>
+                    <td>{{ movement.product.brand or '-' }}</td>
                     <td>{{ movement.product.category }}</td>
                     <td><span class="badge text-bg-{{ 'success' if movement.direction == 'IN' else 'danger' }}">{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }}</span></td>
                     <td>{{ movement.reason }}</td>
                     <td>{{ '%.2f'|format(movement.quantity) }}</td>
+                    <td>R$ {{ '%.2f'|format(movement.product.unit_value or 0) }}</td>
+                    <td>R$ {{ '%.2f'|format((movement.product.unit_value or 0) * movement.quantity) }}</td>
                     <td>{{ '%.2f'|format(movement.previous_quantity) }} → {{ '%.2f'|format(movement.new_quantity) }}</td>
                     <td>{{ movement.user.full_name }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td></tr>
+                <tr><td colspan="11" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

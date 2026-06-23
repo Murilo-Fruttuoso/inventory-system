@@ -39,6 +39,21 @@ def migrate_database():
                         raise
             else:
                 print("✓ 'brand' column already exists!")
+
+            if 'unit_value' not in products_columns:
+                print("Adding 'unit_value' column to products table...")
+                try:
+                    db.session.execute(text('ALTER TABLE products ADD COLUMN unit_value FLOAT NOT NULL DEFAULT 0.0'))
+                    db.session.commit()
+                    print("✓ 'unit_value' column added successfully!")
+                except exc.OperationalError as e:
+                    if "duplicate column name" in str(e) or "already exists" in str(e):
+                        print("✓ 'unit_value' column already exists!")
+                        db.session.rollback()
+                    else:
+                        raise
+            else:
+                print("✓ 'unit_value' column already exists!")
             
             # Check if purchases table needs to be created
             print("Checking purchases table...")

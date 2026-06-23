@@ -45,17 +45,20 @@
                 </form>
                 <div class="table-responsive preview-table">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Produto</th><th>Categoria</th><th>Qtd.</th><th>Mínimo</th></tr></thead>
+                        <thead><tr><th>Produto</th><th>Marca</th><th>Categoria</th><th>Valor Unit.</th><th>Qtd.</th><th>Valor Total</th><th>Mínimo</th></tr></thead>
                         <tbody>
                             {% for product in filtered_products[:10] %}
                             <tr>
                                 <td>{{ product.name }}</td>
+                                <td>{{ product.brand or '-' }}</td>
                                 <td>{{ product.category }}</td>
+                                <td>R$ {{ '%.2f'|format(product.unit_value or 0) }}</td>
                                 <td>{{ '%.2f'|format(product.quantity) }}</td>
+                                <td>R$ {{ '%.2f'|format(product.total_stock_value) }}</td>
                                 <td>{{ '%.2f'|format(product.quantity_min) }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="4" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -112,17 +115,20 @@
                 </form>
                 <div class="table-responsive preview-table">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Qtd.</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Produto</th><th>Marca</th><th>Tipo</th><th>Qtd.</th><th>Valor Unit.</th><th>Valor Mov.</th></tr></thead>
                         <tbody>
                             {% for movement in filtered_movements[:10] %}
                             <tr>
                                 <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                 <td>{{ movement.product.name }}</td>
+                                <td>{{ movement.product.brand or '-' }}</td>
                                 <td>{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }} / {{ movement.reason }}</td>
                                 <td>{{ '%.2f'|format(movement.quantity) }}</td>
+                                <td>R$ {{ '%.2f'|format(movement.product.unit_value or 0) }}</td>
+                                <td>R$ {{ '%.2f'|format((movement.product.unit_value or 0) * movement.quantity) }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="4" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -140,18 +146,21 @@
             <div class="card-body">
                 <div class="table-responsive preview-table">
                     <table class="table align-middle mb-0">
-                        <thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Mínimo</th><th>Localização</th></tr></thead>
+                        <thead><tr><th>Produto</th><th>Marca</th><th>Categoria</th><th>Valor Unit.</th><th>Estoque</th><th>Valor Total</th><th>Mínimo</th><th>Localização</th></tr></thead>
                         <tbody>
                             {% for product in low_stock_products %}
                             <tr class="table-danger">
                                 <td>{{ product.name }}</td>
+                                <td>{{ product.brand or '-' }}</td>
                                 <td>{{ product.category }}</td>
+                                <td>R$ {{ '%.2f'|format(product.unit_value or 0) }}</td>
                                 <td>{{ '%.2f'|format(product.quantity) }}</td>
+                                <td>R$ {{ '%.2f'|format(product.total_stock_value) }}</td>
                                 <td>{{ '%.2f'|format(product.quantity_min) }}</td>
                                 <td>{{ product.location or '-' }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="5" class="text-center text-muted py-3">Nenhum produto em situação crítica.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted py-3">Nenhum produto em situação crítica.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

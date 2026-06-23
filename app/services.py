@@ -50,7 +50,7 @@ def log_action(user, action, description, entity_type=None, entity_id=None, ip_a
     return log
 
 
-def product_query_with_filters(search_term="", category="", low_only=False):
+def product_query_with_filters(search_term="", category="", low_only=False, brand=""):
     query = Product.query
     if search_term:
         like = f"%{search_term}%"
@@ -60,10 +60,13 @@ def product_query_with_filters(search_term="", category="", low_only=False):
                 Product.description.ilike(like),
                 Product.category.ilike(like),
                 Product.location.ilike(like),
+                Product.brand.ilike(like),
             )
         )
     if category:
         query = query.filter(Product.category == category)
+    if brand:
+        query = query.filter(Product.brand.ilike(f"%{brand}%"))
     if low_only:
         query = query.filter(Product.quantity <= Product.quantity_min)
     return query.order_by(Product.name.asc())
@@ -91,10 +94,13 @@ def products_to_dataframe(products):
             {
                 "ID": product.id,
                 "Nome": product.name,
+                "Marca": product.brand or "",
                 "Descrição": product.description or "",
                 "Categoria": product.category,
                 "Unidade": product.unit,
+                "Valor Unitário (R$)": product.unit_value or 0.0,
                 "Quantidade": product.quantity,
+                "Valor Total (R$)": round(product.total_stock_value, 2),
                 "Quantidade mínima": product.quantity_min,
                 "Estoque baixo": "Sim" if product.low_stock else "Não",
                 "Localização": product.location or "",
@@ -108,15 +114,19 @@ def products_to_dataframe(products):
 def movements_to_dataframe(movements):
     rows = []
     for movement in movements:
+        unit_value = movement.product.unit_value or 0.0
         rows.append(
             {
                 "ID": movement.id,
                 "Data": movement.created_at.strftime("%d/%m/%Y %H:%M"),
                 "Produto": movement.product.name,
+                "Marca": movement.product.brand or "",
                 "Categoria": movement.product.category,
                 "Direção": "Entrada" if movement.direction == "IN" else "Saída",
                 "Tipo": movement.reason,
                 "Quantidade": movement.quantity,
+                "Valor Unitário (R$)": unit_value,
+                "Valor Movimentação (R$)": round(unit_value * movement.quantity, 2),
                 "Saldo anterior": movement.previous_quantity,
                 "Novo saldo": movement.new_quantity,
                 "Responsável": movement.user.full_name,
@@ -257,12 +267,16 @@ def dashboard_stats():
     low_stock_count = Product.query.filter(Product.quantity <= Product.quantity_min).count()
     recent_movements = StockMovement.query.order_by(StockMovement.created_at.desc()).limit(10).all()
     critical_products = Product.query.filter(Product.quantity <= Product.quantity_min).order_by(Product.quantity.asc()).limit(10).all()
+    # Valor total em estoque = soma(unit_value * quantity) para todos os produtos
+    all_products = Product.query.all()
+    total_stock_value = sum(p.total_stock_value for p in all_products)
     return {
         "total_products": total_products,
         "total_quantity": total_quantity,
         "low_stock_count": low_stock_count,
         "recent_movements": recent_movements,
         "critical_products": critical_products,
+        "total_stock_value": total_stock_value,
     }
 
 

@@ -51,9 +51,12 @@
                 <tr>
                     <th>ID</th>
                     <th>Produto</th>
+                    <th>Marca</th>
                     <th>Categoria</th>
                     <th>Unidade</th>
+                    <th>Valor Unit.</th>
                     <th>Estoque</th>
+                    <th>Valor Total</th>
                     <th>Mínimo</th>
                     <th>Localização</th>
                     <th class="text-end">Ações</th>
@@ -67,9 +70,12 @@
                         <div class="fw-semibold">{{ product.name }}</div>
                         <div class="small text-muted">{{ product.description or 'Sem descrição' }}</div>
                     </td>
+                    <td>{{ product.brand or '-' }}</td>
                     <td>{{ product.category }}</td>
                     <td>{{ product.unit }}</td>
+                    <td>R$ {{ '%.2f'|format(product.unit_value or 0) }}</td>
                     <td>{{ '%.2f'|format(product.quantity) }}</td>
+                    <td>R$ {{ '%.2f'|format(product.total_stock_value) }}</td>
                     <td>{{ '%.2f'|format(product.quantity_min) }}</td>
                     <td>{{ product.location or '-' }}</td>
                     <td class="text-end">
@@ -83,7 +89,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" class="text-center py-4 text-muted">Nenhum produto encontrado.</td></tr>
+                <tr><td colspan="11" class="text-center py-4 text-muted">Nenhum produto encontrado.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

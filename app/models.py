@@ -45,7 +45,9 @@ class Product(db.Model):
     name = db.Column(db.String(150), nullable=False, index=True)
     description = db.Column(db.Text)
     category = db.Column(db.String(100), nullable=False, index=True)
+    brand = db.Column(db.String(100))
     unit = db.Column(db.String(30), nullable=False)
+    unit_value = db.Column(db.Float, nullable=False, default=0.0)
     quantity = db.Column(db.Float, nullable=False, default=0)
     quantity_min = db.Column(db.Float, nullable=False, default=0)
     location = db.Column(db.String(100))
@@ -79,6 +81,10 @@ class Product(db.Model):
     @property
     def low_stock(self):
         return self.quantity <= self.quantity_min
+
+    @property
+    def total_stock_value(self):
+        return (self.unit_value or 0.0) * (self.quantity or 0.0)
 
 
 class StockMovement(db.Model):
