@@ -1,117 +1,117 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+<div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-1">Dashboard</h1>
-        <p class="text-muted mb-0">Visão geral do estoque, alertas e últimas movimentações.</p>
-    </div>
-    <div class="d-flex gap-2">
-        <a class="btn btn-primary" href="{{ url_for('main.movements_new') }}"><i class="bi bi-plus-circle me-1"></i>Nova movimentação</a>
-        {% if current_user.role == 'admin' %}
-        <a class="btn btn-outline-primary" href="{{ url_for('main.products_new') }}"><i class="bi bi-box-seam me-1"></i>Novo produto</a>
-        {% endif %}
+        <p class="text-muted mb-0">Visão geral do sistema de estoque.</p>
     </div>
 </div>
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card metric-card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="metric-label">Produtos cadastrados</div>
-                <div class="metric-value">{{ total_products }}</div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="h2 mb-2">{{ total_products }}</div>
+                <p class="text-muted mb-0">Produtos cadastrados</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card metric-card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="metric-label">Quantidade total em estoque</div>
-                <div class="metric-value">{{ '%.2f'|format(total_quantity) }}</div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="h2 mb-2">{{ '%.2f'|format(total_quantity) }}</div>
+                <p class="text-muted mb-0">Quantidade total em estoque</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card metric-card warning h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="metric-label">Produtos críticos</div>
-                <div class="metric-value">{{ low_stock_count }}</div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="h2 mb-2">R$ {{ '%.2f'|format(total_value) }}</div>
+                <p class="text-muted mb-0">Valor total de estoque</p>
             </div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card metric-card h-100 border-0 shadow-sm">
-            <div class="card-body d-flex flex-column justify-content-between">
-                <div>
-                    <div class="metric-label">Ações rápidas</div>
-                    <div class="small text-muted">Acesse relatórios e exportações.</div>
-                </div>
-                <a href="{{ url_for('main.reports') }}" class="btn btn-sm btn-light mt-3">Abrir relatórios</a>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="h2 text-danger mb-2">{{ low_stock_count }}</div>
+                <p class="text-muted mb-0">Produtos com estoque baixo</p>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row g-4">
-    <div class="col-lg-7">
-        <div class="card border-0 shadow-sm h-100">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h2 class="h5 mb-0">Produtos críticos</h2>
+            </div>
+            <div class="card-body">
+                {% if critical_products %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Estoque</th>
+                                <th>Mínimo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in critical_products %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('main.products_detail', product_id=product.id) }}" class="text-decoration-none">{{ product.name }}</a>
+                                </td>
+                                <td>{{ '%.2f'|format(product.quantity) }} {{ product.unit }}</td>
+                                <td>{{ '%.2f'|format(product.quantity_min) }} {{ product.unit }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">Todos os produtos possuem estoque acima do mínimo.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 pt-4 pb-0">
                 <h2 class="h5 mb-0">Últimas movimentações</h2>
             </div>
             <div class="card-body">
+                {% if recent_movements %}
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table table-sm align-middle mb-0">
                         <thead>
                             <tr>
                                 <th>Data</th>
                                 <th>Produto</th>
-                                <th>Tipo</th>
-                                <th>Qtd.</th>
-                                <th>Responsável</th>
+                                <th>Direção</th>
+                                <th>Quantidade</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for movement in recent_movements %}
                             <tr>
                                 <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                                <td>{{ movement.product.name }}</td>
                                 <td>
-                                    <span class="badge text-bg-{{ 'success' if movement.direction == 'IN' else 'danger' }}">
-                                        {{ 'Entrada' if movement.direction == 'IN' else 'Saída' }}
-                                    </span>
-                                    <div class="small text-muted">{{ movement.reason }}</div>
+                                    <a href="{{ url_for('main.products_detail', product_id=movement.product.id) }}" class="text-decoration-none">{{ movement.product.name }}</a>
                                 </td>
-                                <td>{{ '%.2f'|format(movement.quantity) }}</td>
-                                <td>{{ movement.user.full_name }}</td>
+                                <td><span class="badge text-bg-{{ 'success' if movement.direction == 'IN' else 'danger' }}">{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }}</span></td>
+                                <td>{{ '%.2f'|format(movement.quantity) }} {{ movement.product.unit }}</td>
                             </tr>
-                            {% else %}
-                            <tr><td colspan="5" class="text-center text-muted py-4">Nenhuma movimentação registrada.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-5">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
-                <h2 class="h5 mb-0">Produtos críticos</h2>
-                <a href="{{ url_for('main.products_critical') }}" class="small text-decoration-none">Ver todos</a>
-            </div>
-            <div class="card-body">
-                <div class="list-group list-group-flush">
-                    {% for product in critical_products %}
-                    <a href="{{ url_for('main.products_detail', product_id=product.id) }}" class="list-group-item list-group-item-action px-0 d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-semibold">{{ product.name }}</div>
-                            <div class="small text-muted">{{ product.category }} · mínimo {{ '%.2f'|format(product.quantity_min) }}</div>
-                        </div>
-                        <span class="badge text-bg-danger">{{ '%.2f'|format(product.quantity) }}</span>
-                    </a>
-                    {% else %}
-                    <div class="text-muted py-4 text-center">Nenhum produto abaixo do mínimo.</div>
-                    {% endfor %}
-                </div>
+                {% else %}
+                <p class="text-muted mb-0">Nenhuma movimentação registrada.</p>
+                {% endif %}
             </div>
         </div>
     </div>
