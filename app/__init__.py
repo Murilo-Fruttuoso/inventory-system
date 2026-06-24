@@ -10,8 +10,17 @@ from config import Config
 from app.extensions import db, login_manager
 
 
+def _is_postgres():
+    """Retorna True se o banco configurado é PostgreSQL."""
+    url = os.environ.get("DATABASE_URL", "")
+    return url.startswith("postgres")
+
+
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
+    # PRAGMAs são específicos do SQLite — ignora silenciosamente para PostgreSQL
+    if _is_postgres():
+        return
     cursor = dbapi_connection.cursor()
     try:
         cursor.execute("PRAGMA foreign_keys=ON")
@@ -109,53 +118,58 @@ def create_app():
 
 
 def _safe_migrate(app):
-    """Add new columns to existing tables without dropping anything."""
+    """
+    Adiciona colunas novas a tabelas existentes sem derrubar dados.
+    Detecta o dialeto (SQLite vs PostgreSQL) e usa sintaxe SQL correta para cada um.
+    """
+    # Tipos de dados por dialeto
+    # PostgreSQL: BOOLEAN DEFAULT FALSE, TIMESTAMP DEFAULT NOW(), sem datetime()
+    # SQLite:     BOOLEAN DEFAULT 0,     DATETIME DEFAULT (datetime('now'))
+    pg = _is_postgres()
+
+    BOOL_TRUE  = "BOOLEAN DEFAULT TRUE"  if pg else "BOOLEAN DEFAULT 1"
+    BOOL_FALSE = "BOOLEAN DEFAULT FALSE" if pg else "BOOLEAN DEFAULT 0"
+    DATETIME_NOW = "TIMESTAMP DEFAULT NOW()" if pg else "DATETIME DEFAULT (datetime('now'))"
+    DATETIME_NULL = "TIMESTAMP" if pg else "DATETIME"
+
     try:
         inspector = inspect(db.engine)
         existing_tables = inspector.get_table_names()
 
-        # --- users: add role 'approver' support (no schema change needed, just ensure column exists)
-        if "users" in existing_tables:
-            user_cols = [c["name"] for c in inspector.get_columns("users")]
-            # role column already exists — nothing to add
-
         # --- purchase_requests
         if "purchase_requests" in existing_tables:
             pr_cols = [c["name"] for c in inspector.get_columns("purchase_requests")]
-            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_date",
-                                "DATETIME DEFAULT (datetime('now'))")
-            _add_col_if_missing(pr_cols, "purchase_requests", "payment_method", "VARCHAR(80)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "installments", "INTEGER DEFAULT 1")
-            _add_col_if_missing(pr_cols, "purchase_requests", "due_date", "VARCHAR(20)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "delivery_deadline", "VARCHAR(80)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "invoice_number", "VARCHAR(80)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "forms_id", "VARCHAR(100)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "forms_submitted_at", "DATETIME")
-            _add_col_if_missing(pr_cols, "purchase_requests", "total_approved",
-                                "FLOAT NOT NULL DEFAULT 0.0")
-            _add_col_if_missing(pr_cols, "purchase_requests", "legale_launch", "VARCHAR(100)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "legale_title", "VARCHAR(200)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_link", "TEXT")
-            _add_col_if_missing(pr_cols, "purchase_requests", "is_urgent", "BOOLEAN DEFAULT 0")
-            _add_col_if_missing(pr_cols, "purchase_requests", "is_recurring", "BOOLEAN DEFAULT 0")
-            _add_col_if_missing(pr_cols, "purchase_requests", "recurrence", "VARCHAR(50)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "delivery_location", "VARCHAR(200)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_type", "VARCHAR(100)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "request_type", "VARCHAR(100)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "exclusive_supplier", "BOOLEAN DEFAULT 0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_date",      DATETIME_NOW)
+            _add_col_if_missing(pr_cols, "purchase_requests", "payment_method",     "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "installments",       "INTEGER DEFAULT 1")
+            _add_col_if_missing(pr_cols, "purchase_requests", "due_date",           "VARCHAR(20)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "delivery_deadline",  "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "invoice_number",     "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "forms_id",           "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "forms_submitted_at", DATETIME_NULL)
+            _add_col_if_missing(pr_cols, "purchase_requests", "total_approved",     "FLOAT NOT NULL DEFAULT 0.0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "legale_launch",      "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "legale_title",       "VARCHAR(200)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_link",      "TEXT")
+            _add_col_if_missing(pr_cols, "purchase_requests", "is_urgent",          BOOL_FALSE)
+            _add_col_if_missing(pr_cols, "purchase_requests", "is_recurring",       BOOL_FALSE)
+            _add_col_if_missing(pr_cols, "purchase_requests", "recurrence",         "VARCHAR(50)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "delivery_location",  "VARCHAR(200)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_type",      "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "request_type",       "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "exclusive_supplier", BOOL_FALSE)
             _add_col_if_missing(pr_cols, "purchase_requests", "exclusive_supplier_name", "VARCHAR(200)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "area_team", "VARCHAR(100)")
-            _add_col_if_missing(pr_cols, "purchase_requests", "has_three_quotes", "BOOLEAN DEFAULT 0")
-            _add_col_if_missing(pr_cols, "purchase_requests", "forms_status", "VARCHAR(50)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "area_team",          "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "has_three_quotes",   BOOL_FALSE)
+            _add_col_if_missing(pr_cols, "purchase_requests", "forms_status",       "VARCHAR(50)")
 
         # --- quotations
         if "quotations" in existing_tables:
             q_cols = [c["name"] for c in inspector.get_columns("quotations")]
-            _add_col_if_missing(q_cols, "quotations", "purchase_date",
-                                "DATETIME DEFAULT (datetime('now'))")
+            _add_col_if_missing(q_cols, "quotations", "purchase_date",  DATETIME_NOW)
             _add_col_if_missing(q_cols, "quotations", "invoice_number", "VARCHAR(80)")
-            _add_col_if_missing(q_cols, "quotations", "freight", "FLOAT DEFAULT 0.0")
-            _add_col_if_missing(q_cols, "quotations", "installments", "INTEGER DEFAULT 1")
+            _add_col_if_missing(q_cols, "quotations", "freight",        "FLOAT DEFAULT 0.0")
+            _add_col_if_missing(q_cols, "quotations", "installments",   "INTEGER DEFAULT 1")
 
         db.session.commit()
     except Exception as exc:
