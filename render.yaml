@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: inventory-system
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false   # defina manualmente no painel do Render
+      - key: ADMIN_FULL_NAME
+        value: Administrador
+      # SEED_USERS: JSON com usuários adicionais garantidos no deploy
+      # Exemplo:
+      # [{"username":"mfruttuoso","full_name":"Murilo Fruttuoso","role":"admin","password":"senha"},
+      #  {"username":"aprovador","full_name":"João Aprovador","role":"approver","password":"senha2"}]
+      - key: SEED_USERS
+        sync: false   # defina manualmente no painel do Render com seus usuários
+
+databases:
+  - name: inventory-db
+    databaseName: inventory
+    user: inventory
+    plan: free

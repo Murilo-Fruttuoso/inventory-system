@@ -102,7 +102,8 @@ def create_app():
     with app.app_context():
         db.create_all()
         _safe_migrate(app)
-        _ensure_default_admin()
+        from app.seed import seed_users
+        seed_users(app, db)
 
     return app
 
@@ -173,23 +174,5 @@ def _add_col_if_missing(existing_cols, table, col_name, col_def):
 
 
 def _ensure_default_admin():
-    """
-    Cria o usuário admin padrão SOMENTE se não existir nenhum usuário no banco.
-    Isso garante que usuários existentes (mfruttuoso, apjesus, edonizeti) NUNCA
-    sejam sobrescritos ou perdidos.
-    """
-    from app.models import User
-    try:
-        if User.query.count() > 0:
-            return  # Usuários já existem — não faz nada
-        admin = User(
-            username=Config.DEFAULT_ADMIN_USERNAME,
-            full_name=Config.DEFAULT_ADMIN_FULL_NAME,
-            role="admin",
-            is_active_user=True,
-        )
-        admin.set_password(Config.DEFAULT_ADMIN_PASSWORD)
-        db.session.add(admin)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+    """Mantido por compatibilidade — delegado ao seed.py."""
+    pass

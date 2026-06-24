@@ -1,4 +1,8 @@
 __pycache__/
 *.pyc
-instance/*.db-shm
-instance/*.db-wal
+*.pyo
+.env
+instance/
+*.db
+*.db-shm
+*.db-wal
