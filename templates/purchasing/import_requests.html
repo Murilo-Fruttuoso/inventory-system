@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1"><i class="bi bi-cloud-upload me-2 text-primary"></i>Importar Solicitações em Lote</h1>
+                <p class="text-muted mb-0">Importe solicitações exportadas do Microsoft Forms ou planilha padrão.</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.list_requests') }}">Voltar</a>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Arquivo Excel (.xlsx ou .xls) <span class="text-danger">*</span></label>
+                        <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">
+                            Aceita o export direto do Microsoft Forms ou planilha com os campos abaixo.
+                            Registros com <strong>Id</strong> já importado serão ignorados (sem duplicatas).
+                        </div>
+                    </div>
+                    <button class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i>Importar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Campos aceitos -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3">
+                <h2 class="h6 fw-bold text-uppercase text-muted">Campos Aceitos (cabeçalhos da planilha)</h2>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Coluna no Excel (exato)</th>
+                                <th>Campo interno</th>
+                                <th>Obrigatório</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            {% set required_cols = ['Id', 'Nome', 'Itens (produto/material/serviço)'] %}
+                            {% set field_names = {
+                                'Id': 'forms_id (deduplicação)',
+                                'Hora de conclusão': 'forms_submitted_at',
+                                'Email': '(ignorado)',
+                                'Nome': 'título da solicitação',
+                                'Área/Equipe do Solicitante': 'area_team',
+                                'Fornecedor exclusivo?': 'exclusive_supplier (Sim/Não)',
+                                'Nome do fornecedor exclusivo': 'exclusive_supplier_name',
+                                'Tipo de Compra': 'purchase_type',
+                                'A compra é urgente?': 'is_urgent (Sim/Não)',
+                                'A compra é recorrente?': 'is_recurring (Sim/Não)',
+                                'Periodicidade': 'recurrence',
+                                'Local de entrega': 'delivery_location',
+                                'Tipo de Solicitação': 'request_type',
+                                'Justificativa': 'justification',
+                                'Itens (produto/material/serviço)': 'items_description',
+                                'Nome do Aprovador': 'approver_id (busca por nome)',
+                                'Arquivo Aprovação': '(ignorado)',
+                                'Planilha detalhada': '(ignorado)',
+                                '3 Orçamentos?': 'has_three_quotes (Sim/Não)',
+                                'Status Aprovação': 'forms_status',
+                                'Nome aprovador': 'approver_id (busca por nome)',
+                                'Data aprovação': '(ignorado)',
+                                'Fornecedor final': 'cotação: supplier',
+                                'Status compra': 'status',
+                                'Data da compra': 'purchase_date',
+                                'Valor total': 'total_estimated',
+                                'Forma de pagamento': 'payment_method',
+                                'Quantidade parcelas': 'installments',
+                                'Nota fiscal': 'invoice_number',
+                                'Data vencimento': 'due_date',
+                                'Data entrega': 'delivery_deadline',
+                                'Lançamento Legale': 'legale_launch',
+                                'Título Legale': 'legale_title',
+                                'Link compra': 'purchase_link'
+                            } %}
+                            {% for field in FORMS_FIELDS %}
+                            <tr>
+                                <td class="text-muted">{{ loop.index }}</td>
+                                <td><code>{{ field }}</code></td>
+                                <td class="text-muted">{{ field_names.get(field|title, field) }}</td>
+                                <td>
+                                    {% if field|lower in ['id','nome','itens (produto/material/serviço)'] %}
+                                    <span class="badge text-bg-danger">Sim</span>
+                                    {% else %}
+                                    <span class="badge text-bg-secondary">Não</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

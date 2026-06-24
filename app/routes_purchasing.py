@@ -22,6 +22,8 @@ from app.extensions import db
 from app.models import AccountPlan, PurchaseRequest, Quotation, User
 from app.services import log_action, parse_number
 
+_VALID_ROLES_BUYER = ("admin", "approver", "buyer")
+
 purchasing_bp = Blueprint("purchasing", __name__, url_prefix="/purchasing")
 
 
@@ -143,7 +145,22 @@ def new_request():
         cost_center = request.form.get("cost_center", "").strip()
         purchase_date_str = request.form.get("purchase_date", "").strip()
         payment_method = request.form.get("payment_method", "").strip()
+        installments = max(int(request.form.get("installments") or 1), 1)
+        due_date = request.form.get("due_date", "").strip()
         delivery_deadline = request.form.get("delivery_deadline", "").strip()
+        delivery_location = request.form.get("delivery_location", "").strip()
+        purchase_type = request.form.get("purchase_type", "").strip()
+        request_type = request.form.get("request_type", "").strip()
+        area_team = request.form.get("area_team", "").strip()
+        is_urgent = bool(request.form.get("is_urgent"))
+        is_recurring = bool(request.form.get("is_recurring"))
+        recurrence = request.form.get("recurrence", "").strip()
+        exclusive_supplier = bool(request.form.get("exclusive_supplier"))
+        exclusive_supplier_name = request.form.get("exclusive_supplier_name", "").strip()
+        purchase_link_pr = request.form.get("purchase_link", "").strip()
+        legale_launch = request.form.get("legale_launch", "").strip()
+        legale_title = request.form.get("legale_title", "").strip()
+        has_three_quotes = bool(request.form.get("has_three_quotes"))
 
         if not title:
             flash("Título da solicitação é obrigatório.", "danger")
@@ -172,7 +189,22 @@ def new_request():
             status="draft",
             purchase_date=purchase_date,
             payment_method=payment_method,
+            installments=installments,
+            due_date=due_date or None,
             delivery_deadline=delivery_deadline,
+            delivery_location=delivery_location or None,
+            purchase_type=purchase_type or None,
+            request_type=request_type or None,
+            area_team=area_team or None,
+            is_urgent=is_urgent,
+            is_recurring=is_recurring,
+            recurrence=recurrence or None,
+            exclusive_supplier=exclusive_supplier,
+            exclusive_supplier_name=exclusive_supplier_name or None,
+            purchase_link=purchase_link_pr or None,
+            legale_launch=legale_launch or None,
+            legale_title=legale_title or None,
+            has_three_quotes=has_three_quotes,
         )
         db.session.add(pr)
         db.session.flush()
@@ -239,7 +271,22 @@ def edit_request(pr_id):
         pr.account_plan_id = request.form.get("account_plan_id", type=int) or None
         pr.cost_center = request.form.get("cost_center", "").strip()
         pr.payment_method = request.form.get("payment_method", "").strip()
+        pr.installments = max(int(request.form.get("installments") or 1), 1)
+        pr.due_date = request.form.get("due_date", "").strip() or None
         pr.delivery_deadline = request.form.get("delivery_deadline", "").strip()
+        pr.delivery_location = request.form.get("delivery_location", "").strip() or None
+        pr.purchase_type = request.form.get("purchase_type", "").strip() or None
+        pr.request_type = request.form.get("request_type", "").strip() or None
+        pr.area_team = request.form.get("area_team", "").strip() or None
+        pr.is_urgent = bool(request.form.get("is_urgent"))
+        pr.is_recurring = bool(request.form.get("is_recurring"))
+        pr.recurrence = request.form.get("recurrence", "").strip() or None
+        pr.exclusive_supplier = bool(request.form.get("exclusive_supplier"))
+        pr.exclusive_supplier_name = request.form.get("exclusive_supplier_name", "").strip() or None
+        pr.purchase_link = request.form.get("purchase_link", "").strip() or None
+        pr.legale_launch = request.form.get("legale_launch", "").strip() or None
+        pr.legale_title = request.form.get("legale_title", "").strip() or None
+        pr.has_three_quotes = bool(request.form.get("has_three_quotes"))
         purchase_date_str = request.form.get("purchase_date", "").strip()
         if purchase_date_str:
             try:
@@ -380,6 +427,7 @@ def new_quotation(pr_id):
             flash("Fornecedor é obrigatório.", "danger")
             return render_template("purchasing/quotation_form.html", pr=pr, q=None)
 
+        installments_q = max(int(request.form.get("installments") or 1), 1)
         q = Quotation(
             purchase_request_id=pr_id,
             supplier=supplier,
@@ -390,6 +438,7 @@ def new_quotation(pr_id):
             freight=freight,
             total_value=total_value,
             payment_method=payment_method,
+            installments=installments_q,
             delivery_deadline=delivery_deadline,
             invoice_number=invoice_number or None,
             invoice_attached=invoice_attached,

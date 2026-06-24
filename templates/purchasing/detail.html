@@ -2,9 +2,11 @@
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
-        <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
             <h1 class="h3 mb-0">{{ pr.title }}</h1>
             <span class="badge text-bg-{{ pr.status_color }} fs-6">{{ pr.status_label }}</span>
+            {% if pr.is_urgent %}<span class="badge text-bg-danger"><i class="bi bi-lightning-fill me-1"></i>Urgente</span>{% endif %}
+            {% if pr.is_recurring %}<span class="badge text-bg-info"><i class="bi bi-arrow-repeat me-1"></i>Recorrente</span>{% endif %}
         </div>
         <p class="text-muted mb-0 small">
             Solicitado por <strong>{{ pr.requester.full_name }}</strong> em {{ pr.created_at.strftime('%d/%m/%Y %H:%M') }}
@@ -28,26 +30,36 @@
             <div class="card-header bg-white border-0 pt-3 pb-0">
                 <h2 class="h6 fw-bold text-uppercase text-muted">Detalhes</h2>
             </div>
-            <div class="card-body">
-                <ul class="list-unstyled vstack gap-2 small mb-0">
+            <div class="card-body small">
+                <ul class="list-unstyled vstack gap-2 mb-0">
                     <li><strong>ID:</strong> #{{ pr.id }}</li>
                     <li><strong>Status:</strong> <span class="badge text-bg-{{ pr.status_color }}">{{ pr.status_label }}</span></li>
                     <li><strong>Data da Compra:</strong> {{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</li>
                     <li><strong>Solicitante:</strong> {{ pr.requester.full_name }}</li>
+                    {% if pr.area_team %}<li><strong>Área/Equipe:</strong> {{ pr.area_team }}</li>{% endif %}
                     <li><strong>Aprovador:</strong> {{ pr.approver.full_name if pr.approver else '-' }}</li>
                     {% if pr.account_plan %}
                     <li><strong>Plano de Contas:</strong><br>
                         <span class="text-primary">{{ pr.account_plan.code }}</span> – {{ pr.account_plan.description }}
                     </li>
                     {% endif %}
-                    {% if pr.cost_center %}
-                    <li><strong>Centro de Custo:</strong> {{ pr.cost_center }}</li>
-                    {% endif %}
+                    {% if pr.cost_center %}<li><strong>Centro de Custo:</strong> {{ pr.cost_center }}</li>{% endif %}
+                    {% if pr.purchase_type %}<li><strong>Tipo de Compra:</strong> {{ pr.purchase_type }}</li>{% endif %}
+                    {% if pr.request_type %}<li><strong>Tipo de Solicitação:</strong> {{ pr.request_type }}</li>{% endif %}
+                    {% if pr.delivery_location %}<li><strong>Local de Entrega:</strong> {{ pr.delivery_location }}</li>{% endif %}
+                    {% if pr.delivery_deadline %}<li><strong>Prazo Entrega:</strong> {{ pr.delivery_deadline }}</li>{% endif %}
                     {% if pr.payment_method %}
-                    <li><strong>Pagamento:</strong> {{ pr.payment_method }}</li>
+                    <li><strong>Pagamento:</strong> {{ pr.payment_method }}
+                        {% if pr.installments and pr.installments > 1 %}
+                        <span class="badge text-bg-info ms-1">{{ pr.installments }}x parcelas</span>
+                        {% endif %}
+                    </li>
                     {% endif %}
-                    {% if pr.delivery_deadline %}
-                    <li><strong>Prazo Entrega:</strong> {{ pr.delivery_deadline }}</li>
+                    {% if pr.due_date %}<li><strong>Vencimento:</strong> {{ pr.due_date }}</li>{% endif %}
+                    {% if pr.exclusive_supplier %}
+                    <li><strong>Fornecedor Exclusivo:</strong>
+                        <span class="badge text-bg-warning">{{ pr.exclusive_supplier_name or 'Sim' }}</span>
+                    </li>
                     {% endif %}
                     {% if pr.total_estimated %}
                     <li><strong>Valor Estimado:</strong> <span class="fw-bold text-primary">R$ {{ '%.2f'|format(pr.total_estimated) }}</span></li>
@@ -55,9 +67,14 @@
                     {% if pr.total_approved %}
                     <li><strong>Valor Aprovado:</strong> <span class="fw-bold text-success">R$ {{ '%.2f'|format(pr.total_approved) }}</span></li>
                     {% endif %}
-                    {% if pr.invoice_number %}
-                    <li><strong>Nota Fiscal:</strong> {{ pr.invoice_number }}</li>
+                    {% if pr.invoice_number %}<li><strong>Nota Fiscal:</strong> {{ pr.invoice_number }}</li>{% endif %}
+                    {% if pr.legale_launch %}<li><strong>Lançamento Legale:</strong> {{ pr.legale_launch }}</li>{% endif %}
+                    {% if pr.legale_title %}<li><strong>Título Legale:</strong> {{ pr.legale_title }}</li>{% endif %}
+                    {% if pr.purchase_link %}
+                    <li><strong>Link:</strong> <a href="{{ pr.purchase_link }}" target="_blank" class="text-truncate d-inline-block" style="max-width:200px">{{ pr.purchase_link }}</a></li>
                     {% endif %}
+                    {% if pr.forms_id %}<li><strong>Forms ID:</strong> <span class="font-monospace small">{{ pr.forms_id }}</span></li>{% endif %}
+                    {% if pr.forms_status %}<li><strong>Status Forms:</strong> {{ pr.forms_status }}</li>{% endif %}
                 </ul>
             </div>
         </div>
@@ -106,10 +123,10 @@
         </a>
         {% endif %}
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         {% if pr.quotations %}
         <div class="table-responsive">
-            <table class="table align-middle mb-0">
+            <table class="table align-middle mb-0 small">
                 <thead>
                     <tr>
                         <th>Fornecedor</th>
@@ -119,10 +136,11 @@
                         <th>Frete</th>
                         <th>Total</th>
                         <th>Pagamento</th>
+                        <th>Parcelas</th>
                         <th>Entrega</th>
                         <th>NF</th>
                         <th>Data Compra</th>
-                        <th>Selecionada</th>
+                        <th>✓</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -131,7 +149,7 @@
                     <tr class="{% if q.is_selected %}table-success{% endif %}">
                         <td>
                             {% if q.purchase_link %}
-                            <a href="{{ q.purchase_link }}" target="_blank" class="fw-semibold">{{ q.supplier }} <i class="bi bi-box-arrow-up-right ms-1 small"></i></a>
+                            <a href="{{ q.purchase_link }}" target="_blank" class="fw-semibold">{{ q.supplier }} <i class="bi bi-box-arrow-up-right ms-1"></i></a>
                             {% else %}
                             <span class="fw-semibold">{{ q.supplier }}</span>
                             {% endif %}
@@ -142,33 +160,36 @@
                         <td>R$ {{ '%.2f'|format(q.freight or 0) }}</td>
                         <td class="fw-bold">R$ {{ '%.2f'|format(q.total_value) }}</td>
                         <td>{{ q.payment_method or '-' }}</td>
+                        <td>
+                            {% if q.installments and q.installments > 1 %}
+                            <span class="badge text-bg-info">{{ q.installments }}x</span>
+                            {% else %}à vista{% endif %}
+                        </td>
                         <td>{{ q.delivery_deadline or '-' }}</td>
                         <td>
                             {% if q.invoice_attached %}
                             <span class="badge text-bg-success">Sim</span>
-                            {% if q.invoice_number %}<br><small>{{ q.invoice_number }}</small>{% endif %}
+                            {% if q.invoice_number %}<br>{{ q.invoice_number }}{% endif %}
                             {% else %}<span class="badge text-bg-secondary">Não</span>{% endif %}
                         </td>
                         <td>{{ q.purchase_date.strftime('%d/%m/%Y') if q.purchase_date else '-' }}</td>
                         <td>
                             {% if q.is_selected %}
-                            <span class="badge text-bg-success"><i class="bi bi-check-circle-fill"></i> Sim</span>
-                            {% else %}
-                            <span class="badge text-bg-secondary">Não</span>
-                            {% endif %}
+                            <span class="badge text-bg-success"><i class="bi bi-check-circle-fill"></i></span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
                         </td>
                         <td>
                             <div class="d-flex gap-1">
                                 {% if pr.status in ('pending_quote', 'quoted', 'pending_approval') %}
                                 <form method="post" action="{{ url_for('purchasing.select_quotation', pr_id=pr.id, q_id=q.id) }}">
-                                    <button class="btn btn-xs btn-outline-success btn-sm" title="Selecionar esta cotação">
+                                    <button class="btn btn-sm btn-outline-success" title="Selecionar">
                                         <i class="bi bi-check2"></i>
                                     </button>
                                 </form>
                                 {% endif %}
                                 {% if current_user.is_admin %}
                                 <form method="post" action="{{ url_for('purchasing.delete_quotation', pr_id=pr.id, q_id=q.id) }}">
-                                    <button class="btn btn-xs btn-outline-danger btn-sm" title="Remover cotação"
+                                    <button class="btn btn-sm btn-outline-danger" title="Remover"
                                             onclick="return confirm('Remover esta cotação?')">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -182,7 +203,7 @@
             </table>
         </div>
         {% else %}
-        <p class="text-muted text-center py-3 mb-0">Nenhuma cotação adicionada ainda.</p>
+        <p class="text-muted text-center py-4 mb-0">Nenhuma cotação adicionada ainda.</p>
         {% endif %}
     </div>
 </div>
@@ -226,14 +247,14 @@
                 {% if current_user.is_approver %}
                 <div class="w-100">
                     <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}" class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Valor a Aprovar (R$)</label>
                             <input class="form-control" type="number" step="0.01" name="total_approved"
                                    value="{{ '%.2f'|format(pr.total_estimated or 0) }}">
                         </div>
                         <div class="col-12">
                             <label class="form-label">Nota do Aprovador (opcional)</label>
-                            <textarea class="form-control" name="approval_note" rows="2" placeholder="Observações sobre a aprovação..."></textarea>
+                            <textarea class="form-control" name="approval_note" rows="2"></textarea>
                         </div>
                         <div class="col-12 d-flex gap-2">
                             <input type="hidden" name="status" id="status_input" value="">

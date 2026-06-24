@@ -59,11 +59,13 @@ def create_app():
     from app.routes import main_bp
     from app.routes_purchasing import purchasing_bp
     from app.routes_budget import budget_bp
+    from app.routes_purchasing_import import purchasing_import_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(purchasing_bp)
     app.register_blueprint(budget_bp)
+    app.register_blueprint(purchasing_import_bp)
 
     @app.context_processor
     def inject_environment():
@@ -107,12 +109,28 @@ def _safe_migrate(app):
             _add_col_if_missing(pr_cols, "purchase_requests", "purchase_date",
                                 "DATETIME DEFAULT (datetime('now'))")
             _add_col_if_missing(pr_cols, "purchase_requests", "payment_method", "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "installments", "INTEGER DEFAULT 1")
+            _add_col_if_missing(pr_cols, "purchase_requests", "due_date", "VARCHAR(20)")
             _add_col_if_missing(pr_cols, "purchase_requests", "delivery_deadline", "VARCHAR(80)")
             _add_col_if_missing(pr_cols, "purchase_requests", "invoice_number", "VARCHAR(80)")
             _add_col_if_missing(pr_cols, "purchase_requests", "forms_id", "VARCHAR(100)")
             _add_col_if_missing(pr_cols, "purchase_requests", "forms_submitted_at", "DATETIME")
             _add_col_if_missing(pr_cols, "purchase_requests", "total_approved",
                                 "FLOAT NOT NULL DEFAULT 0.0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "legale_launch", "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "legale_title", "VARCHAR(200)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_link", "TEXT")
+            _add_col_if_missing(pr_cols, "purchase_requests", "is_urgent", "BOOLEAN DEFAULT 0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "is_recurring", "BOOLEAN DEFAULT 0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "recurrence", "VARCHAR(50)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "delivery_location", "VARCHAR(200)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_type", "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "request_type", "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "exclusive_supplier", "BOOLEAN DEFAULT 0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "exclusive_supplier_name", "VARCHAR(200)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "area_team", "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "has_three_quotes", "BOOLEAN DEFAULT 0")
+            _add_col_if_missing(pr_cols, "purchase_requests", "forms_status", "VARCHAR(50)")
 
         # --- quotations
         if "quotations" in existing_tables:
@@ -121,6 +139,7 @@ def _safe_migrate(app):
                                 "DATETIME DEFAULT (datetime('now'))")
             _add_col_if_missing(q_cols, "quotations", "invoice_number", "VARCHAR(80)")
             _add_col_if_missing(q_cols, "quotations", "freight", "FLOAT DEFAULT 0.0")
+            _add_col_if_missing(q_cols, "quotations", "installments", "INTEGER DEFAULT 1")
 
         db.session.commit()
     except Exception as exc:

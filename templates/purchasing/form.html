@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-xl-9">
+    <div class="col-xl-10">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-1">{{ 'Editar Solicitação' if pr else 'Nova Solicitação de Compra' }}</h1>
@@ -12,17 +12,20 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <form method="post" class="row g-3">
+                    <!-- Título -->
                     <div class="col-12">
                         <label class="form-label fw-semibold">Título da Solicitação <span class="text-danger">*</span></label>
                         <input class="form-control" name="title" required
-                               placeholder="Ex: Compra de material de escritório - Junho"
+                               placeholder="Ex: Compra de material de escritório – Junho"
                                value="{{ pr.title if pr else '' }}">
                     </div>
-                    <div class="col-md-4">
+
+                    <!-- Data, Aprovador, Plano -->
+                    <div class="col-md-3">
                         <label class="form-label fw-semibold">Data da Compra</label>
-                        <input class="form-control" type="date" name="purchase_date"
-                               value="{{ pr.purchase_date.strftime('%Y-%m-%d') if pr and pr.purchase_date else today }}">
-                        <div class="form-text">Preenchido automaticamente com hoje.</div>
+                        <input class="form-control" type="date" name="purchase_date" id="purchase_date"
+                               value="{{ pr.purchase_date.strftime('%Y-%m-%d') if pr and pr.purchase_date else '' }}">
+                        <div class="form-text">Auto-preenchido com hoje.</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Aprovador designado</label>
@@ -30,12 +33,12 @@
                             <option value="">Selecione...</option>
                             {% for u in approvers %}
                             <option value="{{ u.id }}" {% if pr and pr.approver_id == u.id %}selected{% endif %}>
-                                {{ u.full_name }} ({{ u.role }})
+                                {{ u.full_name }}
                             </option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-5">
                         <label class="form-label">Plano de Contas</label>
                         <select class="form-select" name="account_plan_id">
                             <option value="">Selecione...</option>
@@ -46,35 +49,149 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-6">
+
+                    <!-- Área, Centro de custo, Tipo solicitação -->
+                    <div class="col-md-4">
+                        <label class="form-label">Área / Equipe Solicitante</label>
+                        <input class="form-control" name="area_team" placeholder="Ex: Financeiro, TI, RH..."
+                               value="{{ pr.area_team if pr else '' }}">
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">Centro de Custo / Unidade</label>
-                        <input class="form-control" name="cost_center"
-                               placeholder="Ex: UNIDADE SP, Escritório, etc."
+                        <input class="form-control" name="cost_center" placeholder="UNIDADE SP, Escritório..."
                                value="{{ pr.cost_center if pr else '' }}">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Forma de Pagamento</label>
-                        <input class="form-control" name="payment_method"
-                               placeholder="Cartão, Boleto, Pix..."
-                               value="{{ pr.payment_method if pr else '' }}">
+                    <div class="col-md-4">
+                        <label class="form-label">Tipo de Solicitação</label>
+                        <select class="form-select" name="request_type">
+                            <option value="">Selecione...</option>
+                            {% for t in ['Compra','Serviço','Contrato','Renovação','Outro'] %}
+                            <option value="{{ t }}" {% if pr and pr.request_type == t %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="col-md-3">
+
+                    <!-- Tipo de compra, Local de entrega -->
+                    <div class="col-md-4">
+                        <label class="form-label">Tipo de Compra</label>
+                        <input class="form-control" name="purchase_type" placeholder="Material, Software, Hardware..."
+                               value="{{ pr.purchase_type if pr else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Local de Entrega</label>
+                        <input class="form-control" name="delivery_location" placeholder="Endereço ou unidade"
+                               value="{{ pr.delivery_location if pr else '' }}">
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label">Prazo de Entrega</label>
-                        <input class="form-control" name="delivery_deadline"
-                               placeholder="Ex: 5 dias úteis"
+                        <input class="form-control" name="delivery_deadline" placeholder="Ex: 5 dias úteis"
                                value="{{ pr.delivery_deadline if pr else '' }}">
                     </div>
+
+                    <!-- Pagamento + Parcelas + Vencimento -->
+                    <div class="col-md-4">
+                        <label class="form-label">Forma de Pagamento</label>
+                        <select class="form-select" name="payment_method" id="payment_method">
+                            <option value="">Selecione...</option>
+                            {% for m in ['Cartão de Crédito','Boleto','Pix','Transferência','Cheque','Outro'] %}
+                            <option value="{{ m }}" {% if pr and pr.payment_method == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Quantidade de Parcelas</label>
+                        <input class="form-control" type="number" name="installments" id="installments"
+                               min="1" max="60" value="{{ pr.installments if pr else 1 }}">
+                        <div class="form-text">Mín. 1 (à vista).</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Data de Vencimento</label>
+                        <input class="form-control" type="date" name="due_date"
+                               value="{{ pr.due_date if pr else '' }}">
+                    </div>
+
+                    <!-- Flags -->
+                    <div class="col-md-3">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" name="is_urgent" id="is_urgent"
+                                   {% if pr and pr.is_urgent %}checked{% endif %}>
+                            <label class="form-check-label" for="is_urgent"><i class="bi bi-lightning-fill text-danger me-1"></i>Urgente</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" name="is_recurring" id="is_recurring"
+                                   {% if pr and pr.is_recurring %}checked{% endif %}
+                                   onchange="document.getElementById('recurrence_row').style.display=this.checked?'':'none'">
+                            <label class="form-check-label" for="is_recurring"><i class="bi bi-arrow-repeat text-info me-1"></i>Recorrente</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" name="exclusive_supplier" id="exclusive_supplier"
+                                   {% if pr and pr.exclusive_supplier %}checked{% endif %}
+                                   onchange="document.getElementById('supplier_name_row').style.display=this.checked?'':'none'">
+                            <label class="form-check-label" for="exclusive_supplier"><i class="bi bi-person-lock me-1"></i>Fornecedor Exclusivo</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch mt-4">
+                            <input class="form-check-input" type="checkbox" name="has_three_quotes" id="has_three_quotes"
+                                   {% if pr and pr.has_three_quotes %}checked{% endif %}>
+                            <label class="form-check-label" for="has_three_quotes"><i class="bi bi-3-circle me-1"></i>3 Orçamentos</label>
+                        </div>
+                    </div>
+
+                    <!-- Periodicidade (visível se recorrente) -->
+                    <div class="col-md-6" id="recurrence_row" style="display:{{ 'block' if pr and pr.is_recurring else 'none' }}">
+                        <label class="form-label">Periodicidade</label>
+                        <select class="form-select" name="recurrence">
+                            <option value="">Selecione...</option>
+                            {% for p in ['Mensal','Bimestral','Trimestral','Semestral','Anual','Semanal'] %}
+                            <option value="{{ p }}" {% if pr and pr.recurrence == p %}selected{% endif %}>{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Nome do fornecedor exclusivo (visível se exclusivo) -->
+                    <div class="col-md-6" id="supplier_name_row" style="display:{{ 'block' if pr and pr.exclusive_supplier else 'none' }}">
+                        <label class="form-label">Nome do Fornecedor Exclusivo</label>
+                        <input class="form-control" name="exclusive_supplier_name"
+                               value="{{ pr.exclusive_supplier_name if pr else '' }}">
+                    </div>
+
+                    <!-- Itens, justificativa -->
                     <div class="col-12">
-                        <label class="form-label fw-semibold">Itens / Descrição</label>
+                        <label class="form-label fw-semibold">Itens / Descrição <span class="text-danger">*</span></label>
                         <textarea class="form-control" name="items_description" rows="4"
                                   placeholder="Liste os itens necessários, quantidades e especificações...">{{ pr.items_description if pr else '' }}</textarea>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Justificativa</label>
-                        <textarea class="form-control" name="justification" rows="3"
+                        <textarea class="form-control" name="justification" rows="2"
                                   placeholder="Por que esta compra é necessária?">{{ pr.justification if pr else '' }}</textarea>
                     </div>
-                    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+
+                    <!-- Campos Legale e Link -->
+                    <div class="col-md-4">
+                        <label class="form-label">Link da Compra</label>
+                        <input class="form-control" name="purchase_link" type="url"
+                               placeholder="https://..."
+                               value="{{ pr.purchase_link if pr else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Lançamento Legale</label>
+                        <input class="form-control" name="legale_launch"
+                               value="{{ pr.legale_launch if pr else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Título Legale</label>
+                        <input class="form-control" name="legale_title"
+                               value="{{ pr.legale_title if pr else '' }}">
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-3 border-top pt-3">
                         <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.list_requests') }}">Cancelar</a>
                         <button class="btn btn-primary">
                             <i class="bi bi-save me-1"></i>{{ 'Atualizar' if pr else 'Criar Solicitação' }}
@@ -88,13 +205,24 @@
 {% endblock %}
 {% block scripts %}
 <script>
-// Preencher data de hoje se estiver vazio
 (function(){
-    var field = document.querySelector('input[name="purchase_date"]');
-    if (field && !field.value) {
-        var d = new Date();
-        field.value = d.toISOString().split('T')[0];
+    // Auto-fill purchase_date with today
+    var d = document.getElementById('purchase_date');
+    if (d && !d.value) {
+        d.value = new Date().toISOString().split('T')[0];
     }
+    // Show/hide installments based on payment method
+    var pm = document.getElementById('payment_method');
+    var inst = document.getElementById('installments');
+    function toggleInstallments() {
+        if (pm && inst) {
+            var needsInstallments = pm.value === 'Cartão de Crédito' || pm.value === 'Boleto';
+            inst.parentElement.querySelector('.form-text').textContent = 
+                needsInstallments ? 'Obrigatório para parcelamento.' : 'Mín. 1 (à vista).';
+        }
+    }
+    if (pm) pm.addEventListener('change', toggleInstallments);
+    toggleInstallments();
 })();
 </script>
 {% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="h3 mb-1"><i class="bi bi-shop me-2 text-primary"></i>Painel de Fornecedores</h1>
+        <p class="text-muted mb-0">Análise de gastos por fornecedor em compras aprovadas.</p>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Data inicial</label>
+                <input class="form-control" type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Data final</label>
+                <input class="form-control" type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button class="btn btn-primary flex-grow-1">Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('budget.suppliers_panel') }}">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Card total geral -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Total Gasto (Aprovado/Comprado)</div>
+                <div class="h4 mb-0 text-primary">R$ {{ '%.2f'|format(total_spend) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Total de Fornecedores</div>
+                <div class="h4 mb-0 text-secondary">{{ supplier_rows|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center">
+                <div class="text-muted small fw-semibold text-uppercase">Total de Compras</div>
+                <div class="h4 mb-0 text-secondary">{{ supplier_rows|sum(attribute='qty') }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ranking de fornecedores -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h2 class="h5 mb-0"><i class="bi bi-trophy me-2 text-warning"></i>Ranking por Valor Gasto</h2>
+            </div>
+            <div class="card-body p-0">
+                {% if supplier_rows %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Fornecedor</th>
+                                <th>Compras</th>
+                                <th>Total (R$)</th>
+                                <th>%</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in supplier_rows %}
+                            {% set pct = (r.total / total_spend * 100)|round(1) if total_spend > 0 else 0 %}
+                            <tr class="{% if top_supplier == r.supplier %}table-primary{% endif %}">
+                                <td class="text-muted small">{{ loop.index }}</td>
+                                <td>
+                                    <div class="fw-semibold">{{ r.supplier }}</div>
+                                    <div class="progress mt-1" style="height:4px;">
+                                        <div class="progress-bar bg-primary" style="width:{{ pct }}%"></div>
+                                    </div>
+                                </td>
+                                <td><span class="badge text-bg-secondary">{{ r.qty }}</span></td>
+                                <td class="fw-bold">R$ {{ '%.2f'|format(r.total or 0) }}</td>
+                                <td class="small text-muted">{{ pct }}%</td>
+                                <td>
+                                    <a class="btn btn-xs btn-sm btn-outline-primary"
+                                       href="{{ url_for('budget.suppliers_panel', supplier=r.supplier, date_from=date_from, date_to=date_to) }}">
+                                        <i class="bi bi-search"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+                    Nenhum fornecedor com compra aprovada no período.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalhe do fornecedor selecionado -->
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h2 class="h5 mb-0">
+                    <i class="bi bi-list-ul me-2"></i>
+                    {% if top_supplier %}
+                    Compras: <span class="text-primary">{{ top_supplier }}</span>
+                    {% else %}
+                    Selecione um fornecedor →
+                    {% endif %}
+                </h2>
+            </div>
+            <div class="card-body p-0">
+                {% if supplier_detail %}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Solicitação</th>
+                                <th>Data Compra</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            {% for pr, q in supplier_detail %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('purchasing.view_request', pr_id=pr.id) }}" class="fw-semibold text-decoration-none">
+                                        {{ pr.title[:40] }}{% if pr.title|length > 40 %}…{% endif %}
+                                    </a>
+                                </td>
+                                <td>{{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</td>
+                                <td class="fw-bold">R$ {{ '%.2f'|format(q.total_value) }}</td>
+                                <td><span class="badge text-bg-{{ pr.status_color }}">{{ pr.status_label }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% elif top_supplier %}
+                <div class="text-center py-4 text-muted small">Nenhuma compra registrada para este fornecedor.</div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hand-index display-4 d-block mb-2 opacity-25"></i>
+                    Clique no ícone <i class="bi bi-search"></i> em um fornecedor para ver o detalhamento.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

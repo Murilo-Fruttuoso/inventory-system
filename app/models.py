@@ -21,7 +21,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     full_name = db.Column(db.String(120), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    # roles: admin | approver | user
+    # roles: admin | approver | buyer | user
     role = db.Column(db.String(20), nullable=False, default="user", index=True)
     is_active_user = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -52,6 +52,15 @@ class User(UserMixin, db.Model):
     @property
     def is_approver(self):
         return self.role in ("admin", "approver")
+
+    @property
+    def is_buyer(self):
+        """Comprador: acessa compras, orçamento, relatórios — não acessa admin."""
+        return self.role in ("admin", "approver", "buyer")
+
+    @property
+    def can_manage_users(self):
+        return self.role == "admin"
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +209,8 @@ class AccountPlan(db.Model):
 
     budgets = db.relationship("Budget", back_populates="account_plan",
                               cascade="all, delete-orphan", lazy=True)
+    monthly_budgets = db.relationship("MonthlyBudget", back_populates="account_plan",
+                                      cascade="all, delete-orphan", lazy=True)
     purchase_requests = db.relationship("PurchaseRequest", back_populates="account_plan", lazy=True)
 
 
@@ -251,9 +262,25 @@ class PurchaseRequest(db.Model):
     total_estimated = db.Column(db.Float, default=0.0)
     total_approved = db.Column(db.Float, default=0.0)
     purchase_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)  # DATA DA COMPRA
-    payment_method = db.Column(db.String(80))  # forma de pagamento
+    payment_method = db.Column(db.String(80))   # forma de pagamento
+    installments = db.Column(db.Integer, default=1)  # quantidade de parcelas
+    due_date = db.Column(db.String(20))         # data de vencimento
     delivery_deadline = db.Column(db.String(80))  # prazo de entrega
     invoice_number = db.Column(db.String(80))  # nota fiscal
+    legale_launch = db.Column(db.String(100))  # Lançamento Legale
+    legale_title = db.Column(db.String(200))   # Título Legale
+    purchase_link = db.Column(db.Text)         # Link da compra
+    is_urgent = db.Column(db.Boolean, default=False)
+    is_recurring = db.Column(db.Boolean, default=False)
+    recurrence = db.Column(db.String(50))      # Periodicidade
+    delivery_location = db.Column(db.String(200))  # Local de entrega
+    purchase_type = db.Column(db.String(100))  # Tipo de Compra
+    request_type = db.Column(db.String(100))   # Tipo de Solicitação
+    exclusive_supplier = db.Column(db.Boolean, default=False)
+    exclusive_supplier_name = db.Column(db.String(200))
+    area_team = db.Column(db.String(100))      # Área/Equipe do Solicitante
+    has_three_quotes = db.Column(db.Boolean, default=False)  # 3 Orçamentos?
+    forms_status = db.Column(db.String(50))    # Status Aprovação (Forms)
     approval_note = db.Column(db.Text)         # nota do aprovador
     forms_id = db.Column(db.String(100))       # ID externo do Microsoft Forms
     forms_submitted_at = db.Column(db.DateTime)
@@ -325,6 +352,7 @@ class Quotation(db.Model):
     freight = db.Column(db.Float, default=0.0)
     total_value = db.Column(db.Float, nullable=False, default=0.0)
     payment_method = db.Column(db.String(100))
+    installments = db.Column(db.Integer, default=1)  # quantidade de parcelas
     delivery_deadline = db.Column(db.String(100))
     invoice_attached = db.Column(db.Boolean, default=False)
     invoice_number = db.Column(db.String(80))
@@ -334,3 +362,31 @@ class Quotation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     purchase_request = db.relationship("PurchaseRequest", back_populates="quotations")
+
+
+# ---------------------------------------------------------------------------
+# MonthlyBudget  (Orçamento mensal por conta — vinculado ao AccountPlan)
+# Armazena orçado, ajustado e realizado-projetado do arquivo mensal
+# ---------------------------------------------------------------------------
+class MonthlyBudget(db.Model):
+    __tablename__ = "monthly_budgets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    account_plan_id = db.Column(db.Integer, db.ForeignKey("account_plans.id"),
+                                nullable=False, index=True)
+    year = db.Column(db.Integer, nullable=False, index=True)
+    month = db.Column(db.Integer, nullable=False, index=True)   # 1-12
+    budgeted_value = db.Column(db.Float, nullable=False, default=0.0)    # Orçado
+    adjusted_value = db.Column(db.Float, nullable=False, default=0.0)   # Ajustado
+    realized_value = db.Column(db.Float, nullable=False, default=0.0)   # Realizado/Projetado
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow,
+                           onupdate=datetime.utcnow, nullable=False)
+
+    account_plan = db.relationship("AccountPlan", back_populates="monthly_budgets")
+
+    __table_args__ = (
+        db.UniqueConstraint("account_plan_id", "year", "month",
+                            name="uq_monthly_budget_account_year_month"),
+    )
