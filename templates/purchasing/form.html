@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-9">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">{{ 'Editar Solicitação' if pr else 'Nova Solicitação de Compra' }}</h1>
+                <p class="text-muted mb-0">Preencha os dados para iniciar o fluxo de compra.</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.list_requests') }}">Voltar</a>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Título da Solicitação <span class="text-danger">*</span></label>
+                        <input class="form-control" name="title" required
+                               placeholder="Ex: Compra de material de escritório - Junho"
+                               value="{{ pr.title if pr else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Data da Compra</label>
+                        <input class="form-control" type="date" name="purchase_date"
+                               value="{{ pr.purchase_date.strftime('%Y-%m-%d') if pr and pr.purchase_date else today }}">
+                        <div class="form-text">Preenchido automaticamente com hoje.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Aprovador designado</label>
+                        <select class="form-select" name="approver_id">
+                            <option value="">Selecione...</option>
+                            {% for u in approvers %}
+                            <option value="{{ u.id }}" {% if pr and pr.approver_id == u.id %}selected{% endif %}>
+                                {{ u.full_name }} ({{ u.role }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Plano de Contas</label>
+                        <select class="form-select" name="account_plan_id">
+                            <option value="">Selecione...</option>
+                            {% for ap in account_plans %}
+                            <option value="{{ ap.id }}" {% if pr and pr.account_plan_id == ap.id %}selected{% endif %}>
+                                {{ ap.code }} – {{ ap.description }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Centro de Custo / Unidade</label>
+                        <input class="form-control" name="cost_center"
+                               placeholder="Ex: UNIDADE SP, Escritório, etc."
+                               value="{{ pr.cost_center if pr else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Forma de Pagamento</label>
+                        <input class="form-control" name="payment_method"
+                               placeholder="Cartão, Boleto, Pix..."
+                               value="{{ pr.payment_method if pr else '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Prazo de Entrega</label>
+                        <input class="form-control" name="delivery_deadline"
+                               placeholder="Ex: 5 dias úteis"
+                               value="{{ pr.delivery_deadline if pr else '' }}">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Itens / Descrição</label>
+                        <textarea class="form-control" name="items_description" rows="4"
+                                  placeholder="Liste os itens necessários, quantidades e especificações...">{{ pr.items_description if pr else '' }}</textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Justificativa</label>
+                        <textarea class="form-control" name="justification" rows="3"
+                                  placeholder="Por que esta compra é necessária?">{{ pr.justification if pr else '' }}</textarea>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                        <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.list_requests') }}">Cancelar</a>
+                        <button class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>{{ 'Atualizar' if pr else 'Criar Solicitação' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Preencher data de hoje se estiver vazio
+(function(){
+    var field = document.querySelector('input[name="purchase_date"]');
+    if (field && !field.value) {
+        var d = new Date();
+        field.value = d.toISOString().split('T')[0];
+    }
+})();
+</script>
+{% endblock %}

@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 
 from flask import Flask
-from sqlalchemy import event
+from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 
 from config import Config
 from app.extensions import db, login_manager
@@ -33,10 +34,20 @@ def create_app():
         static_folder=str(base_dir / "static"),
     )
     app.config.from_object(Config)
-    
-    # GARANTE que o banco está no mesmo instance_path do Flask
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(app.instance_path, 'estoque.db')}"
 
+    # GARANTE que o banco está no mesmo instance_path do Flask
+    # Só usa DATABASE_URL se for PostgreSQL (evita sqlite:/// relativo do .env local)
+    _db_url = os.environ.get("DATABASE_URL", "")
+    if _db_url.startswith("postgres"):
+        # Render.com usa postgres://, SQLAlchemy requer postgresql://
+        app.config["SQLALCHEMY_DATABASE_URI"] = _db_url.replace(
+            "postgres://", "postgresql://", 1
+        )
+    else:
+        # Sempre usa caminho absoluto para SQLite
+        app.config["SQLALCHEMY_DATABASE_URI"] = (
+            f"sqlite:///{os.path.join(app.instance_path, 'estoque.db')}"
+        )
 
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(os.path.join(app.instance_path, "backups"), exist_ok=True)
@@ -46,32 +57,105 @@ def create_app():
 
     from app.auth import auth_bp
     from app.routes import main_bp
-    from app.models import User
+    from app.routes_purchasing import purchasing_bp
+    from app.routes_budget import budget_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(purchasing_bp)
+    app.register_blueprint(budget_bp)
 
     @app.context_processor
     def inject_environment():
-        return {"app_name": "Controle de Estoque"}
+        from flask_login import current_user
+        pending_count = 0
+        try:
+            if current_user.is_authenticated and current_user.is_approver:
+                from app.models import PurchaseRequest
+                pending_count = PurchaseRequest.query.filter_by(
+                    status="pending_approval"
+                ).count()
+        except Exception:
+            pass
+        return {
+            "app_name": "Controle de Estoque",
+            "pending_approvals_count": pending_count,
+        }
 
     with app.app_context():
         db.create_all()
-        ensure_default_admin(User)
+        _safe_migrate(app)
+        _ensure_default_admin()
 
     return app
 
 
-def ensure_default_admin(UserModel):
-    if UserModel.query.count() > 0:
-        return
+def _safe_migrate(app):
+    """Add new columns to existing tables without dropping anything."""
+    try:
+        inspector = inspect(db.engine)
+        existing_tables = inspector.get_table_names()
 
-    admin = UserModel(
-        username=Config.DEFAULT_ADMIN_USERNAME,
-        full_name=Config.DEFAULT_ADMIN_FULL_NAME,
-        role="admin",
-        is_active_user=True,
-    )
-    admin.set_password(Config.DEFAULT_ADMIN_PASSWORD)
-    db.session.add(admin)
-    db.session.commit()
+        # --- users: add role 'approver' support (no schema change needed, just ensure column exists)
+        if "users" in existing_tables:
+            user_cols = [c["name"] for c in inspector.get_columns("users")]
+            # role column already exists — nothing to add
+
+        # --- purchase_requests
+        if "purchase_requests" in existing_tables:
+            pr_cols = [c["name"] for c in inspector.get_columns("purchase_requests")]
+            _add_col_if_missing(pr_cols, "purchase_requests", "purchase_date",
+                                "DATETIME DEFAULT (datetime('now'))")
+            _add_col_if_missing(pr_cols, "purchase_requests", "payment_method", "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "delivery_deadline", "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "invoice_number", "VARCHAR(80)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "forms_id", "VARCHAR(100)")
+            _add_col_if_missing(pr_cols, "purchase_requests", "forms_submitted_at", "DATETIME")
+            _add_col_if_missing(pr_cols, "purchase_requests", "total_approved",
+                                "FLOAT NOT NULL DEFAULT 0.0")
+
+        # --- quotations
+        if "quotations" in existing_tables:
+            q_cols = [c["name"] for c in inspector.get_columns("quotations")]
+            _add_col_if_missing(q_cols, "quotations", "purchase_date",
+                                "DATETIME DEFAULT (datetime('now'))")
+            _add_col_if_missing(q_cols, "quotations", "invoice_number", "VARCHAR(80)")
+            _add_col_if_missing(q_cols, "quotations", "freight", "FLOAT DEFAULT 0.0")
+
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning(f"Migration warning (non-fatal): {exc}")
+
+
+def _add_col_if_missing(existing_cols, table, col_name, col_def):
+    if col_name not in existing_cols:
+        try:
+            db.session.execute(
+                text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_def}")
+            )
+        except OperationalError:
+            db.session.rollback()
+
+
+def _ensure_default_admin():
+    """
+    Cria o usuário admin padrão SOMENTE se não existir nenhum usuário no banco.
+    Isso garante que usuários existentes (mfruttuoso, apjesus, edonizeti) NUNCA
+    sejam sobrescritos ou perdidos.
+    """
+    from app.models import User
+    try:
+        if User.query.count() > 0:
+            return  # Usuários já existem — não faz nada
+        admin = User(
+            username=Config.DEFAULT_ADMIN_USERNAME,
+            full_name=Config.DEFAULT_ADMIN_FULL_NAME,
+            role="admin",
+            is_active_user=True,
+        )
+        admin.set_password(Config.DEFAULT_ADMIN_PASSWORD)
+        db.session.add(admin)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()

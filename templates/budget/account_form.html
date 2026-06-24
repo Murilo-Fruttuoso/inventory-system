@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">{{ 'Editar Conta' if account else 'Nova Conta do Plano' }}</h1>
+                <p class="text-muted mb-0">Cadastro de conta para o plano de contas.</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ url_for('budget.accounts_list') }}">Voltar</a>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+                        <input class="form-control font-monospace" name="code" required
+                               placeholder="Ex: 20601000015"
+                               value="{{ account.code if account else '' }}">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Descrição <span class="text-danger">*</span></label>
+                        <input class="form-control" name="description" required
+                               placeholder="Ex: Copa - Material de consumo"
+                               value="{{ account.description if account else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Resumido (Tipo)</label>
+                        <select class="form-select" name="summary">
+                            <option value="">Selecione...</option>
+                            <option value="RECEITA" {% if account and account.summary == 'RECEITA' %}selected{% endif %}>RECEITA</option>
+                            <option value="DESPESAS" {% if account and account.summary == 'DESPESAS' %}selected{% endif %}>DESPESAS</option>
+                            <option value="ADIANTAMENTOS/ANTECIPAÇÕES" {% if account and account.summary == 'ADIANTAMENTOS/ANTECIPAÇÕES' %}selected{% endif %}>ADIANTAMENTOS/ANTECIPAÇÕES</option>
+                            <option value="APORTE" {% if account and account.summary == 'APORTE' %}selected{% endif %}>APORTE</option>
+                            <option value="DESPESAS EM GERAL - ESCRITÓRIO" {% if account and account.summary == 'DESPESAS EM GERAL - ESCRITÓRIO' %}selected{% endif %}>DESPESAS EM GERAL - ESCRITÓRIO</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Totalizadora</label>
+                        <input class="form-control" name="totalizer"
+                               placeholder="Ex: MATERIAL DE ESCRITÓRIO"
+                               value="{{ account.totalizer if account else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" name="account_type">
+                            <option value="">Selecione...</option>
+                            <option value="PG" {% if account and account.account_type == 'PG' %}selected{% endif %}>PG (Pagamento)</option>
+                            <option value="RC" {% if account and account.account_type == 'RC' %}selected{% endif %}>RC (Receita)</option>
+                            <option value="BB" {% if account and account.account_type == 'BB' %}selected{% endif %}>BB (Banco do Brasil)</option>
+                            <option value="SANT" {% if account and account.account_type == 'SANT' %}selected{% endif %}>SANT (Santander)</option>
+                            <option value="CX SP" {% if account and account.account_type == 'CX SP' %}selected{% endif %}>CX SP (Caixa SP)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Centro de Custo / Empresa / Unidade</label>
+                        <input class="form-control" name="cost_center"
+                               placeholder="Ex: UNIDADE SP, UNIDADE RP..."
+                               value="{{ account.cost_center if account else '' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Área</label>
+                        <input class="form-control" name="area"
+                               placeholder="Ex: OFFICE, CÍVEL..."
+                               value="{{ account.area if account else '' }}">
+                    </div>
+                    {% if account %}
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="is_active"
+                                   {% if account.is_active %}checked{% endif %}>
+                            <label class="form-check-label">Conta ativa</label>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                        <a class="btn btn-outline-secondary" href="{{ url_for('budget.accounts_list') }}">Cancelar</a>
+                        <button class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

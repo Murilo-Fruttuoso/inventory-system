@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="h3 mb-1"><i class="bi bi-pie-chart me-2 text-primary"></i>Orçamento {{ year }}</h1>
+        <p class="text-muted mb-0">Acompanhe o orçado vs. utilizado por conta do plano.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" href="{{ url_for('budget.accounts_list') }}">
+            <i class="bi bi-journal-text me-1"></i>Plano de Contas
+        </a>
+        {% if current_user.role == 'admin' %}
+        <a class="btn btn-outline-success" href="{{ url_for('budget.import_accounts') }}">
+            <i class="bi bi-upload me-1"></i>Importar
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Ano</label>
+                <input class="form-control" type="number" name="year" value="{{ year }}" min="2020" max="2099">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Tipo de Conta</label>
+                <select class="form-select" name="type">
+                    <option value="">Todos</option>
+                    {% for t in summary_types %}
+                    <option value="{{ t }}" {% if summary_type == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cards de totais -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm metric-card">
+            <div class="card-body">
+                <div class="metric-label">Total Orçado</div>
+                <div class="metric-value" style="font-size:1.5rem;">R$ {{ '%.2f'|format(total_budgeted) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm metric-card">
+            <div class="card-body">
+                <div class="metric-label">Total Utilizado</div>
+                <div class="metric-value text-danger" style="font-size:1.5rem;">R$ {{ '%.2f'|format(total_used) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm metric-card {% if total_available < 0 %}warning{% endif %}">
+            <div class="card-body">
+                <div class="metric-label">Saldo Disponível</div>
+                <div class="metric-value {% if total_available < 0 %}text-danger{% else %}text-success{% endif %}" style="font-size:1.5rem;">
+                    R$ {{ '%.2f'|format(total_available) }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Tipo</th>
+                    <th>Centro de Custo</th>
+                    <th>Orçado (R$)</th>
+                    <th>Utilizado (R$)</th>
+                    <th>Disponível (R$)</th>
+                    <th>% Uso</th>
+                    {% if current_user.is_admin %}
+                    <th class="text-end">Orçamento</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="{% if row.available < 0 %}table-danger{% elif row.pct >= 80 %}table-warning{% endif %}">
+                    <td><span class="badge text-bg-secondary font-monospace">{{ row.plan.code }}</span></td>
+                    <td>
+                        <div class="fw-semibold">{{ row.plan.description }}</div>
+                        {% if row.plan.totalizer %}
+                        <div class="small text-muted">{{ row.plan.totalizer }}</div>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge text-bg-{{ 'primary' if row.plan.summary == 'RECEITA' else 'danger' if row.plan.summary == 'DESPESAS' else 'secondary' }}">{{ row.plan.summary or '-' }}</span></td>
+                    <td class="small">{{ row.plan.cost_center or '-' }}</td>
+                    <td>
+                        {% if row.budgeted > 0 %}
+                        R$ {{ '%.2f'|format(row.budgeted) }}
+                        {% else %}
+                        <span class="text-muted small">Não definido</span>
+                        {% endif %}
+                    </td>
+                    <td>R$ {{ '%.2f'|format(row.used) }}</td>
+                    <td class="fw-bold {% if row.available < 0 %}text-danger{% else %}text-success{% endif %}">
+                        R$ {{ '%.2f'|format(row.available) }}
+                    </td>
+                    <td>
+                        {% if row.budgeted > 0 %}
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:8px;min-width:60px;">
+                                <div class="progress-bar bg-{{ 'danger' if row.pct >= 100 else 'warning' if row.pct >= 80 else 'success' }}"
+                                     style="width:{{ [row.pct, 100]|min }}%"></div>
+                            </div>
+                            <span class="small">{{ row.pct }}%</span>
+                        </div>
+                        {% else %}-{% endif %}
+                    </td>
+                    {% if current_user.is_admin %}
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary"
+                           href="{{ url_for('budget.set_budget', account_id=row.plan.id, year=year) }}">
+                            {{ 'Editar' if row.budget_obj else 'Definir' }}
+                        </a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">Nenhuma conta no plano. <a href="{{ url_for('budget.import_accounts') }}">Importe o plano de contas.</a></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

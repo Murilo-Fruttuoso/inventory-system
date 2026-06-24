@@ -28,8 +28,10 @@
                         <label class="form-label">Perfil</label>
                         <select class="form-select" name="role">
                             <option value="user" {% if user_obj and user_obj.role == 'user' %}selected{% endif %}>Usuário comum</option>
+                            <option value="approver" {% if user_obj and user_obj.role == 'approver' %}selected{% endif %}>Aprovador</option>
                             <option value="admin" {% if user_obj and user_obj.role == 'admin' %}selected{% endif %}>Administrador</option>
                         </select>
+                        <div class="form-text">Aprovador: pode aprovar/rejeitar compras.</div>
                     </div>
                     <div class="col-md-3 d-flex align-items-end">
                         <div class="form-check form-switch pb-2">

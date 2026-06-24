@@ -14,3 +14,16 @@ def admin_required(view_func):
         return view_func(*args, **kwargs)
 
     return wrapped_view
+
+
+def approver_required(view_func):
+    """Permite acesso a admin e approver."""
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)
+        if current_user.role not in ("admin", "approver"):
+            abort(403)
+        return view_func(*args, **kwargs)
+
+    return wrapped_view

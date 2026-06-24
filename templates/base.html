@@ -24,20 +24,80 @@
         </button>
         <div class="collapse navbar-collapse" id="menu">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.products_list') }}"><i class="bi bi-box-seam me-2"></i>Produtos</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.movements_list') }}"><i class="bi bi-arrow-left-right me-2"></i>Movimentações</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.reports') }}"><i class="bi bi-file-earmark-chart me-2"></i>Relatórios</a></li>
+                <!-- Estoque -->
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.dashboard') }}"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.products_list') }}"><i class="bi bi-box-seam me-1"></i>Produtos</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.movements_list') }}"><i class="bi bi-arrow-left-right me-1"></i>Movimentações</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.reports') }}"><i class="bi bi-file-earmark-chart me-1"></i>Relatórios</a></li>
+
+                <!-- Compras -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-cart3 me-1"></i>Compras
+                        {% if pending_approvals_count > 0 %}
+                        <span class="badge bg-danger ms-1">{{ pending_approvals_count }}</span>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark">
+                        <li><a class="dropdown-item" href="{{ url_for('purchasing.list_requests') }}"><i class="bi bi-list-ul me-2"></i>Solicitações</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('purchasing.new_request') }}"><i class="bi bi-plus-circle me-2"></i>Nova Solicitação</a></li>
+                        {% if current_user.role in ('admin', 'approver') %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="{{ url_for('purchasing.approvals_panel') }}">
+                                <i class="bi bi-check2-square me-2"></i>Painel de Aprovações
+                                {% if pending_approvals_count > 0 %}
+                                <span class="badge bg-danger ms-1">{{ pending_approvals_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                <!-- Orçamento -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-pie-chart me-1"></i>Orçamento
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark">
+                        <li><a class="dropdown-item" href="{{ url_for('budget.overview') }}"><i class="bi bi-bar-chart-line me-2"></i>Visão Geral</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('budget.accounts_list') }}"><i class="bi bi-journal-text me-2"></i>Plano de Contas</a></li>
+                        {% if current_user.role == 'admin' %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('budget.import_accounts') }}"><i class="bi bi-upload me-2"></i>Importar Plano</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                <!-- Admin -->
                 {% if current_user.role == 'admin' %}
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.users_list') }}"><i class="bi bi-people me-2"></i>Usuários</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.logs_list') }}"><i class="bi bi-file-text me-2"></i>Logs</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.import_products') }}"><i class="bi bi-upload me-2"></i>Importar</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear me-1"></i>Admin
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark">
+                        <li><a class="dropdown-item" href="{{ url_for('main.users_list') }}"><i class="bi bi-people me-2"></i>Usuários</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('main.logs_list') }}"><i class="bi bi-file-text me-2"></i>Logs</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('main.import_products') }}"><i class="bi bi-upload me-2"></i>Importar Produtos</a></li>
+                    </ul>
+                </li>
                 {% endif %}
             </ul>
             <div class="d-flex align-items-center gap-3 text-white small">
+                {% if current_user.role in ('admin', 'approver') and pending_approvals_count > 0 %}
+                <a href="{{ url_for('purchasing.approvals_panel') }}" class="btn btn-warning btn-sm position-relative">
+                    <i class="bi bi-bell-fill"></i>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ pending_approvals_count }}</span>
+                </a>
+                {% endif %}
                 <div>
                     <div class="fw-semibold">{{ current_user.full_name }}</div>
-                    <div class="opacity-75">{{ current_user.role|upper }}</div>
+                    <div class="opacity-75">
+                        {% if current_user.role == 'admin' %}Administrador
+                        {% elif current_user.role == 'approver' %}Aprovador
+                        {% else %}Usuário{% endif %}
+                    </div>
                 </div>
                 <a class="btn btn-light btn-sm" href="{{ url_for('auth.logout') }}">Sair</a>
             </div>

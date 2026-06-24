@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">Adicionar Cotação</h1>
+                <p class="text-muted mb-0">Solicitação: <strong>{{ pr.title }}</strong></p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.view_request', pr_id=pr.id) }}">Voltar</a>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="post" class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Fornecedor <span class="text-danger">*</span></label>
+                        <input class="form-control" name="supplier" required placeholder="Nome do fornecedor">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Marca</label>
+                        <input class="form-control" name="brand" placeholder="Marca do produto">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Data da Compra</label>
+                        <input class="form-control" type="date" name="purchase_date" id="purchase_date_field">
+                        <div class="form-text">Preenche com hoje automaticamente.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Link da Compra</label>
+                        <input class="form-control" name="purchase_link" type="url" placeholder="https://...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Quantidade <span class="text-danger">*</span></label>
+                        <input class="form-control" name="quantity" type="number" step="any" min="0.001" value="1" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Valor Unitário (R$) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input class="form-control" name="unit_price" type="number" step="0.01" min="0" id="unit_price" required>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Frete (R$)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input class="form-control" name="freight" type="number" step="0.01" min="0" id="freight" value="0">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Total Estimado</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <input class="form-control" id="total_display" readonly placeholder="Calculado automaticamente">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Forma de Pagamento</label>
+                        <input class="form-control" name="payment_method" placeholder="Cartão, Pix, Boleto...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Prazo de Entrega</label>
+                        <input class="form-control" name="delivery_deadline" placeholder="Ex: 3 dias úteis">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Número da Nota Fiscal</label>
+                        <input class="form-control" name="invoice_number" placeholder="NF-e 123456">
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="invoice_attached" id="invoice_attached">
+                            <label class="form-check-label" for="invoice_attached">Nota Fiscal Anexada</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" name="notes" rows="2" placeholder="Detalhes adicionais sobre esta cotação..."></textarea>
+                    </div>
+                    <div class="col-12 d-flex justify-content-end gap-2 mt-3">
+                        <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.view_request', pr_id=pr.id) }}">Cancelar</a>
+                        <button class="btn btn-success"><i class="bi bi-plus-circle me-1"></i>Adicionar Cotação</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Auto-preencher data de hoje
+(function(){
+    var field = document.getElementById('purchase_date_field');
+    if (field && !field.value) {
+        field.value = new Date().toISOString().split('T')[0];
+    }
+})();
+
+// Calcular total
+function calcTotal() {
+    var qty = parseFloat(document.querySelector('[name="quantity"]').value) || 0;
+    var price = parseFloat(document.getElementById('unit_price').value) || 0;
+    var freight = parseFloat(document.getElementById('freight').value) || 0;
+    var total = qty * price + freight;
+    document.getElementById('total_display').value = total.toFixed(2);
+}
+document.querySelector('[name="quantity"]').addEventListener('input', calcTotal);
+document.getElementById('unit_price').addEventListener('input', calcTotal);
+document.getElementById('freight').addEventListener('input', calcTotal);
+</script>
+{% endblock %}

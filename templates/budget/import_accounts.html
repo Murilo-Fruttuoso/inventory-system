@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-xl-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-1">Importar Plano de Contas</h1>
+                <p class="text-muted mb-0">Carregue o arquivo Excel com os dados do plano de contas.</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ url_for('budget.accounts_list') }}">Voltar</a>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" class="vstack gap-3">
+                    <div>
+                        <label class="form-label fw-semibold">Arquivo Excel (.xlsx ou .xls)</label>
+                        <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">Contas existentes serão atualizadas; novas serão criadas. Nenhum dado será apagado.</div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">
+                            <i class="bi bi-upload me-2"></i>Importar Plano de Contas
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h2 class="h5 mb-1">Colunas esperadas no Excel</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr><th>Coluna Excel</th><th>Obrigatória</th><th>Descrição</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><code>Plano</code></td><td><span class="badge text-bg-danger">Sim</span></td><td>Código do plano de contas</td></tr>
+                            <tr><td><code>Descrição</code></td><td><span class="badge text-bg-danger">Sim</span></td><td>Nome da conta</td></tr>
+                            <tr><td><code>Resumido</code></td><td><span class="badge text-bg-secondary">Não</span></td><td>DESPESAS, RECEITA, etc.</td></tr>
+                            <tr><td><code>Totalizadora</code></td><td><span class="badge text-bg-secondary">Não</span></td><td>Grupo da conta</td></tr>
+                            <tr><td><code>Tipo</code></td><td><span class="badge text-bg-secondary">Não</span></td><td>PG, RC, BB, SANT...</td></tr>
+                            <tr><td><code>Empresa/Unidade</code></td><td><span class="badge text-bg-secondary">Não</span></td><td>Centro de custo</td></tr>
+                            <tr><td><code>Área</code></td><td><span class="badge text-bg-secondary">Não</span></td><td>Área de negócio</td></tr>
+                            <tr><td><code>Orçado</code></td><td><span class="badge text-bg-secondary">Não</span></td><td>Valor orçado anual (R$)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

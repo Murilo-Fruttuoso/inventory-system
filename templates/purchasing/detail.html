@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <h1 class="h3 mb-0">{{ pr.title }}</h1>
+            <span class="badge text-bg-{{ pr.status_color }} fs-6">{{ pr.status_label }}</span>
+        </div>
+        <p class="text-muted mb-0 small">
+            Solicitado por <strong>{{ pr.requester.full_name }}</strong> em {{ pr.created_at.strftime('%d/%m/%Y %H:%M') }}
+            · Data da Compra: <strong>{{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</strong>
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        {% if pr.status in ('draft', 'pending_quote') and (current_user.is_admin or pr.requester_id == current_user.id) %}
+        <a class="btn btn-outline-primary" href="{{ url_for('purchasing.edit_request', pr_id=pr.id) }}">
+            <i class="bi bi-pencil me-1"></i>Editar
+        </a>
+        {% endif %}
+        <a class="btn btn-outline-secondary" href="{{ url_for('purchasing.list_requests') }}">Voltar</a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Info principal -->
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h2 class="h6 fw-bold text-uppercase text-muted">Detalhes</h2>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled vstack gap-2 small mb-0">
+                    <li><strong>ID:</strong> #{{ pr.id }}</li>
+                    <li><strong>Status:</strong> <span class="badge text-bg-{{ pr.status_color }}">{{ pr.status_label }}</span></li>
+                    <li><strong>Data da Compra:</strong> {{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</li>
+                    <li><strong>Solicitante:</strong> {{ pr.requester.full_name }}</li>
+                    <li><strong>Aprovador:</strong> {{ pr.approver.full_name if pr.approver else '-' }}</li>
+                    {% if pr.account_plan %}
+                    <li><strong>Plano de Contas:</strong><br>
+                        <span class="text-primary">{{ pr.account_plan.code }}</span> – {{ pr.account_plan.description }}
+                    </li>
+                    {% endif %}
+                    {% if pr.cost_center %}
+                    <li><strong>Centro de Custo:</strong> {{ pr.cost_center }}</li>
+                    {% endif %}
+                    {% if pr.payment_method %}
+                    <li><strong>Pagamento:</strong> {{ pr.payment_method }}</li>
+                    {% endif %}
+                    {% if pr.delivery_deadline %}
+                    <li><strong>Prazo Entrega:</strong> {{ pr.delivery_deadline }}</li>
+                    {% endif %}
+                    {% if pr.total_estimated %}
+                    <li><strong>Valor Estimado:</strong> <span class="fw-bold text-primary">R$ {{ '%.2f'|format(pr.total_estimated) }}</span></li>
+                    {% endif %}
+                    {% if pr.total_approved %}
+                    <li><strong>Valor Aprovado:</strong> <span class="fw-bold text-success">R$ {{ '%.2f'|format(pr.total_approved) }}</span></li>
+                    {% endif %}
+                    {% if pr.invoice_number %}
+                    <li><strong>Nota Fiscal:</strong> {{ pr.invoice_number }}</li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Itens e justificativa -->
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h2 class="h6 fw-bold text-uppercase text-muted">Itens / Descrição</h2>
+            </div>
+            <div class="card-body">
+                <p class="mb-0" style="white-space:pre-wrap;">{{ pr.items_description or '—' }}</p>
+            </div>
+        </div>
+        {% if pr.justification %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-3 pb-0">
+                <h2 class="h6 fw-bold text-uppercase text-muted">Justificativa</h2>
+            </div>
+            <div class="card-body">
+                <p class="mb-0" style="white-space:pre-wrap;">{{ pr.justification }}</p>
+            </div>
+        </div>
+        {% endif %}
+        {% if pr.approval_note %}
+        <div class="card border-0 shadow-sm border-{{ 'success' if pr.status == 'approved' else 'danger' }} mb-4">
+            <div class="card-header bg-{{ 'success' if pr.status == 'approved' else 'danger' }} bg-opacity-10 border-0 pt-3 pb-0">
+                <h2 class="h6 fw-bold text-uppercase text-muted">Nota do Aprovador</h2>
+            </div>
+            <div class="card-body">
+                <p class="mb-0" style="white-space:pre-wrap;">{{ pr.approval_note }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Cotações -->
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0"><i class="bi bi-currency-dollar me-2 text-success"></i>Cotações ({{ pr.quotations|length }})</h2>
+        {% if pr.status in ('draft', 'pending_quote', 'quoted') %}
+        <a class="btn btn-sm btn-success" href="{{ url_for('purchasing.new_quotation', pr_id=pr.id) }}">
+            <i class="bi bi-plus me-1"></i>Adicionar Cotação
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        {% if pr.quotations %}
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Fornecedor</th>
+                        <th>Marca</th>
+                        <th>Qtd.</th>
+                        <th>Valor Unit.</th>
+                        <th>Frete</th>
+                        <th>Total</th>
+                        <th>Pagamento</th>
+                        <th>Entrega</th>
+                        <th>NF</th>
+                        <th>Data Compra</th>
+                        <th>Selecionada</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in pr.quotations %}
+                    <tr class="{% if q.is_selected %}table-success{% endif %}">
+                        <td>
+                            {% if q.purchase_link %}
+                            <a href="{{ q.purchase_link }}" target="_blank" class="fw-semibold">{{ q.supplier }} <i class="bi bi-box-arrow-up-right ms-1 small"></i></a>
+                            {% else %}
+                            <span class="fw-semibold">{{ q.supplier }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ q.brand or '-' }}</td>
+                        <td>{{ '%.2f'|format(q.quantity) }}</td>
+                        <td>R$ {{ '%.2f'|format(q.unit_price) }}</td>
+                        <td>R$ {{ '%.2f'|format(q.freight or 0) }}</td>
+                        <td class="fw-bold">R$ {{ '%.2f'|format(q.total_value) }}</td>
+                        <td>{{ q.payment_method or '-' }}</td>
+                        <td>{{ q.delivery_deadline or '-' }}</td>
+                        <td>
+                            {% if q.invoice_attached %}
+                            <span class="badge text-bg-success">Sim</span>
+                            {% if q.invoice_number %}<br><small>{{ q.invoice_number }}</small>{% endif %}
+                            {% else %}<span class="badge text-bg-secondary">Não</span>{% endif %}
+                        </td>
+                        <td>{{ q.purchase_date.strftime('%d/%m/%Y') if q.purchase_date else '-' }}</td>
+                        <td>
+                            {% if q.is_selected %}
+                            <span class="badge text-bg-success"><i class="bi bi-check-circle-fill"></i> Sim</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Não</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                {% if pr.status in ('pending_quote', 'quoted', 'pending_approval') %}
+                                <form method="post" action="{{ url_for('purchasing.select_quotation', pr_id=pr.id, q_id=q.id) }}">
+                                    <button class="btn btn-xs btn-outline-success btn-sm" title="Selecionar esta cotação">
+                                        <i class="bi bi-check2"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% if current_user.is_admin %}
+                                <form method="post" action="{{ url_for('purchasing.delete_quotation', pr_id=pr.id, q_id=q.id) }}">
+                                    <button class="btn btn-xs btn-outline-danger btn-sm" title="Remover cotação"
+                                            onclick="return confirm('Remover esta cotação?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted text-center py-3 mb-0">Nenhuma cotação adicionada ainda.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Ações de status -->
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white border-0 pt-3 pb-0">
+        <h2 class="h5 mb-0"><i class="bi bi-arrow-right-circle me-2"></i>Ações</h2>
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            {% if pr.status == 'draft' %}
+                {% if current_user.is_admin or pr.requester_id == current_user.id %}
+                <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}">
+                    <input type="hidden" name="status" value="pending_quote">
+                    <button class="btn btn-warning">Enviar para Cotação</button>
+                </form>
+                <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}">
+                    <input type="hidden" name="status" value="cancelled">
+                    <button class="btn btn-outline-danger" onclick="return confirm('Cancelar solicitação?')">Cancelar</button>
+                </form>
+                {% endif %}
+
+            {% elif pr.status == 'pending_quote' %}
+                {% if current_user.is_admin or pr.requester_id == current_user.id %}
+                <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}">
+                    <input type="hidden" name="status" value="quoted">
+                    <button class="btn btn-info text-white">Marcar como Cotado</button>
+                </form>
+                {% endif %}
+
+            {% elif pr.status == 'quoted' %}
+                {% if current_user.is_admin or pr.requester_id == current_user.id %}
+                <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}">
+                    <input type="hidden" name="status" value="pending_approval">
+                    <button class="btn btn-primary">Enviar para Aprovação</button>
+                </form>
+                {% endif %}
+
+            {% elif pr.status == 'pending_approval' %}
+                {% if current_user.is_approver %}
+                <div class="w-100">
+                    <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}" class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Valor a Aprovar (R$)</label>
+                            <input class="form-control" type="number" step="0.01" name="total_approved"
+                                   value="{{ '%.2f'|format(pr.total_estimated or 0) }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Nota do Aprovador (opcional)</label>
+                            <textarea class="form-control" name="approval_note" rows="2" placeholder="Observações sobre a aprovação..."></textarea>
+                        </div>
+                        <div class="col-12 d-flex gap-2">
+                            <input type="hidden" name="status" id="status_input" value="">
+                            <button type="submit" class="btn btn-success" onclick="document.getElementById('status_input').value='approved'">
+                                <i class="bi bi-check-circle me-1"></i>Aprovar
+                            </button>
+                            <button type="submit" class="btn btn-danger" onclick="document.getElementById('status_input').value='rejected'">
+                                <i class="bi bi-x-circle me-1"></i>Reprovar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-0">Aguardando aprovação de {{ pr.approver.full_name if pr.approver else 'um aprovador' }}.</div>
+                {% endif %}
+
+            {% elif pr.status == 'approved' %}
+                {% if current_user.is_approver %}
+                <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}">
+                    <input type="hidden" name="status" value="purchased">
+                    <button class="btn btn-success"><i class="bi bi-bag-check me-1"></i>Marcar como Comprado</button>
+                </form>
+                {% endif %}
+
+            {% elif pr.status == 'rejected' %}
+                {% if current_user.is_admin or pr.requester_id == current_user.id %}
+                <form method="post" action="{{ url_for('purchasing.change_status', pr_id=pr.id) }}">
+                    <input type="hidden" name="status" value="draft">
+                    <button class="btn btn-outline-secondary">Retornar para Rascunho</button>
+                </form>
+                {% endif %}
+            {% endif %}
+
+            {% if current_user.is_admin and pr.status not in ('purchased', 'cancelled') %}
+            <form method="post" action="{{ url_for('purchasing.delete_request', pr_id=pr.id) }}"
+                  onsubmit="return confirm('Excluir permanentemente esta solicitação?')">
+                <button class="btn btn-outline-danger btn-sm">Excluir</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
