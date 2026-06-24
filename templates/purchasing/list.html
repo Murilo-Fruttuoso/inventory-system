@@ -5,9 +5,16 @@
         <h1 class="h3 mb-1"><i class="bi bi-cart3 me-2 text-primary"></i>Solicitações de Compra</h1>
         <p class="text-muted mb-0">Gerencie o fluxo completo de solicitações, cotações e aprovações.</p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('purchasing.new_request') }}">
-        <i class="bi bi-plus-circle me-1"></i>Nova Solicitação
-    </a>
+    <div class="d-flex gap-2 flex-wrap">
+        {% if current_user.role == 'admin' %}
+        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#bulkDeleteModal">
+            <i class="bi bi-trash3 me-1"></i>Excluir em Lote
+        </button>
+        {% endif %}
+        <a class="btn btn-primary" href="{{ url_for('purchasing.new_request') }}">
+            <i class="bi bi-plus-circle me-1"></i>Nova Solicitação
+        </a>
+    </div>
 </div>
 
 <!-- Filtros -->
@@ -35,56 +42,90 @@
     </div>
 </div>
 
-<!-- Tabela -->
-<div class="card border-0 shadow-sm">
-    <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Título</th>
-                    <th>Solicitante</th>
-                    <th>Data da Compra</th>
-                    <th>Status</th>
-                    <th>Cotações</th>
-                    <th>Valor Estimado</th>
-                    <th class="text-end">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for pr in requests %}
-                <tr>
-                    <td class="text-muted small">{{ pr.id }}</td>
-                    <td>
-                        <div class="fw-semibold">{{ pr.title }}</div>
-                        {% if pr.account_plan %}
-                        <div class="small text-muted"><i class="bi bi-tag me-1"></i>{{ pr.account_plan.code }} - {{ pr.account_plan.description }}</div>
-                        {% endif %}
-                    </td>
-                    <td>{{ pr.requester.full_name }}</td>
-                    <td>{{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</td>
-                    <td>
-                        <span class="badge text-bg-{{ pr.status_color }}">{{ pr.status_label }}</span>
-                    </td>
-                    <td>
-                        <span class="badge text-bg-secondary">{{ pr.quotations|length }}</span>
-                    </td>
-                    <td>
-                        {% if pr.total_estimated %}
-                        {{ pr.total_estimated|brl }}
-                        {% else %}-{% endif %}
-                    </td>
-                    <td class="text-end">
-                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('purchasing.view_request', pr_id=pr.id) }}">Ver</a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="8" class="text-center text-muted py-4">Nenhuma solicitação encontrada.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- Tabela com checkboxes (admin only) -->
+<form id="bulkSelectForm" method="post" action="{{ url_for('purchasing.bulk_delete_requests') }}">
+    <input type="hidden" name="mode" value="selected">
+
+    {% if current_user.role == 'admin' and requests %}
+    <div class="d-flex align-items-center gap-3 mb-2 ps-1" id="bulkActionsBar" style="display:none!important">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="selectAll">
+            <label class="form-check-label small text-muted" for="selectAll">Selecionar todos visíveis</label>
+        </div>
+        <span class="badge bg-secondary" id="selectedCount">0 selecionado(s)</span>
+        <button type="submit" class="btn btn-sm btn-danger" id="deleteSelectedBtn" disabled
+                onclick="return confirm('Excluir as solicitações selecionadas? Esta ação é irreversível.')">
+            <i class="bi bi-trash me-1"></i>Excluir Selecionadas
+        </button>
     </div>
-</div>
+    {% endif %}
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        {% if current_user.role == 'admin' %}
+                        <th style="width:36px"></th>
+                        {% endif %}
+                        <th>#</th>
+                        <th>Título</th>
+                        <th>Solicitante</th>
+                        <th>Data da Compra</th>
+                        <th>Status</th>
+                        <th>Cotações</th>
+                        <th>Valor Estimado</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pr in requests %}
+                    <tr>
+                        {% if current_user.role == 'admin' %}
+                        <td>
+                            <input class="form-check-input row-checkbox" type="checkbox" name="ids" value="{{ pr.id }}">
+                        </td>
+                        {% endif %}
+                        <td class="text-muted small">{{ pr.id }}</td>
+                        <td>
+                            <div class="fw-semibold">{{ pr.title }}</div>
+                            {% if pr.forms_id %}
+                            <div class="small text-muted"><i class="bi bi-cloud-upload me-1"></i>Importado (Forms)</div>
+                            {% endif %}
+                            {% if pr.account_plan %}
+                            <div class="small text-muted"><i class="bi bi-tag me-1"></i>{{ pr.account_plan.code }} - {{ pr.account_plan.description }}</div>
+                            {% endif %}
+                        </td>
+                        <td>{{ pr.requester.full_name }}</td>
+                        <td>{{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</td>
+                        <td>
+                            <span class="badge text-bg-{{ pr.status_color }}">{{ pr.status_label }}</span>
+                        </td>
+                        <td>
+                            <span class="badge text-bg-secondary">{{ pr.quotations|length }}</span>
+                        </td>
+                        <td>
+                            {% if pr.total_estimated %}
+                            {{ pr.total_estimated|brl }}
+                            {% else %}-{% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('purchasing.view_request', pr_id=pr.id) }}">Ver</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{{ '9' if current_user.role == 'admin' else '8' }}" class="text-center text-muted py-4">
+                            <i class="bi bi-cart3 fs-3 d-block mb-2 opacity-25"></i>
+                            Nenhuma solicitação encontrada.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
 
 {% if pagination.pages > 1 %}
 <nav class="mt-4">
@@ -100,5 +141,125 @@
         {% endfor %}
     </ul>
 </nav>
+{% endif %}
+
+{% if current_user.role == 'admin' %}
+<!-- Modal: Excluir em Lote -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-trash3-fill me-2"></i>Excluir Solicitações em Lote
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Escolha um critério para exclusão em lote. Todas as cotações vinculadas também serão excluídas.</p>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Atenção:</strong> Esta ação é <strong>irreversível</strong>. Os dados excluídos não poderão ser recuperados.
+                </div>
+
+                <!-- Excluir importadas (Forms) -->
+                <div class="card mb-3 border-warning">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1"><i class="bi bi-cloud-upload me-2 text-warning"></i>Excluir todas importadas via Forms</h6>
+                            <p class="small text-muted mb-0">Remove todas as solicitações criadas via importação em lote (campos <code>forms_id</code> preenchido).</p>
+                        </div>
+                        <form method="post" action="{{ url_for('purchasing.bulk_delete_requests') }}"
+                              onsubmit="return confirm('Excluir TODAS as solicitações importadas via Forms? Irreversível.')">
+                            <input type="hidden" name="mode" value="imported">
+                            <button type="submit" class="btn btn-warning btn-sm ms-3 text-nowrap">
+                                <i class="bi bi-trash me-1"></i>Excluir Importadas
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Excluir por status -->
+                <div class="card mb-3 border-info">
+                    <div class="card-body">
+                        <h6 class="mb-2"><i class="bi bi-funnel me-2 text-info"></i>Excluir por Status</h6>
+                        <p class="small text-muted mb-3">Remove todas as solicitações que estejam em determinado status.</p>
+                        <form method="post" action="{{ url_for('purchasing.bulk_delete_requests') }}" class="d-flex gap-2 align-items-end"
+                              onsubmit="return confirm('Excluir TODAS as solicitações com o status selecionado? Irreversível.')">
+                            <input type="hidden" name="mode" value="status">
+                            <div class="flex-grow-1">
+                                <label class="form-label small">Status</label>
+                                <select class="form-select form-select-sm" name="status_filter" required>
+                                    <option value="">Selecione um status...</option>
+                                    {% for k, v in STATUS_LABELS.items() %}
+                                    <option value="{{ k }}">{{ v }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-info btn-sm text-nowrap">
+                                <i class="bi bi-trash me-1"></i>Excluir por Status
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Excluir TODAS -->
+                <div class="card border-danger">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-danger"><i class="bi bi-radioactive me-2"></i>Excluir TODAS as solicitações</h6>
+                            <p class="small text-muted mb-0">Remove <strong>absolutamente todas</strong> as solicitações de compra do sistema.</p>
+                        </div>
+                        <form method="post" action="{{ url_for('purchasing.bulk_delete_requests') }}"
+                              onsubmit="return confirm('ATENÇÃO: Excluir ABSOLUTAMENTE TODAS as solicitações de compra? Esta ação não pode ser desfeita!')">
+                            <input type="hidden" name="mode" value="all">
+                            <button type="submit" class="btn btn-danger btn-sm ms-3 text-nowrap">
+                                <i class="bi bi-trash3 me-1"></i>Excluir Tudo
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if current_user.role == 'admin' %}
+<script>
+// Gerenciar seleção de checkboxes para exclusão em lote
+var selectAll = document.getElementById('selectAll');
+var checkboxes = document.querySelectorAll('.row-checkbox');
+var selectedCount = document.getElementById('selectedCount');
+var deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+var bulkActionsBar = document.getElementById('bulkActionsBar');
+
+function updateCount() {
+    var checked = document.querySelectorAll('.row-checkbox:checked').length;
+    if (selectedCount) selectedCount.textContent = checked + ' selecionado(s)';
+    if (deleteSelectedBtn) deleteSelectedBtn.disabled = (checked === 0);
+    if (bulkActionsBar) {
+        bulkActionsBar.style.display = '';
+    }
+}
+
+if (selectAll) {
+    selectAll.addEventListener('change', function() {
+        checkboxes.forEach(function(cb) { cb.checked = selectAll.checked; });
+        updateCount();
+    });
+}
+
+checkboxes.forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        if (!this.checked && selectAll) selectAll.checked = false;
+        updateCount();
+    });
+});
+</script>
 {% endif %}
 {% endblock %}

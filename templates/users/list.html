@@ -2,10 +2,12 @@
 {% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
-        <h1 class="h3 mb-1">Usuários</h1>
-        <p class="text-muted mb-0">Gerencie administradores e usuários comuns.</p>
+        <h1 class="h3 mb-1"><i class="bi bi-people me-2 text-primary"></i>Usuários</h1>
+        <p class="text-muted mb-0">Gerencie administradores e usuários do sistema.</p>
     </div>
-    <a class="btn btn-primary" href="{{ url_for('main.users_new') }}">Novo usuário</a>
+    <a class="btn btn-primary" href="{{ url_for('main.users_new') }}">
+        <i class="bi bi-person-plus me-1"></i>Novo Usuário
+    </a>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -24,15 +26,64 @@
             <tbody>
                 {% for user in users %}
                 <tr>
-                    <td>{{ user.username }}</td>
+                    <td class="fw-semibold">{{ user.username }}</td>
                     <td>{{ user.full_name }}</td>
-                    <td><span class="badge text-bg-{{ 'primary' if user.role == 'admin' else 'secondary' }}">{{ user.role }}</span></td>
-                    <td><span class="badge text-bg-{{ 'success' if user.is_active_user else 'danger' }}">{{ 'Ativo' if user.is_active_user else 'Inativo' }}</span></td>
-                    <td>{{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else '-' }}</td>
-                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('main.users_edit', user_id=user.id) }}">Editar</a></td>
+                    <td>
+                        <span class="badge text-bg-{{
+                            'primary' if user.role == 'admin'
+                            else 'info' if user.role == 'approver'
+                            else 'warning' if user.role == 'buyer'
+                            else 'secondary'
+                        }}">
+                            {{
+                                'Administrador' if user.role == 'admin'
+                                else 'Aprovador' if user.role == 'approver'
+                                else 'Comprador' if user.role == 'buyer'
+                                else 'Usuário'
+                            }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge text-bg-{{ 'success' if user.is_active_user else 'danger' }}">
+                            {{ 'Ativo' if user.is_active_user else 'Inativo' }}
+                        </span>
+                    </td>
+                    <td class="small text-muted">
+                        {{ user.last_login.strftime('%d/%m/%Y %H:%M') if user.last_login else '-' }}
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a class="btn btn-outline-primary"
+                               href="{{ url_for('main.users_edit', user_id=user.id) }}"
+                               title="Editar usuário">
+                                <i class="bi bi-pencil me-1"></i>Editar
+                            </a>
+                            {% if user.id != current_user.id %}
+                            <button type="button"
+                                    class="btn btn-outline-danger"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteUserModal"
+                                    data-user-id="{{ user.id }}"
+                                    data-user-name="{{ user.username }}"
+                                    data-user-role="{{ user.role }}"
+                                    title="Excluir usuário">
+                                <i class="bi bi-trash me-1"></i>Excluir
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-secondary" disabled title="Você não pode excluir sua própria conta">
+                                <i class="bi bi-lock me-1"></i>Excluir
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum usuário encontrado.</td></tr>
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <i class="bi bi-people fs-3 d-block mb-2 opacity-25"></i>
+                        Nenhum usuário encontrado.
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -44,7 +95,9 @@
     <ul class="pagination">
         {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
             {% if p %}
-            <li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="{{ url_for('main.users_list', page=p) }}">{{ p }}</a></li>
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('main.users_list', page=p) }}">{{ p }}</a>
+            </li>
             {% else %}
             <li class="page-item disabled"><span class="page-link">…</span></li>
             {% endif %}
@@ -52,4 +105,63 @@
     </ul>
 </nav>
 {% endif %}
+
+<!-- Modal: Excluir Usuário -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o usuário <strong id="deleteUserName" class="text-danger"></strong>?</p>
+                <div id="deleteUserAdminWarning" class="alert alert-warning d-none" role="alert">
+                    <i class="bi bi-shield-exclamation me-2"></i>
+                    <strong>Atenção:</strong> Este usuário é um <strong>Administrador</strong>. Certifique-se de que há pelo menos um outro administrador no sistema.
+                </div>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Esta ação é <strong>irreversível</strong>. O usuário perderá acesso imediatamente.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <form id="deleteUserForm" method="post">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i>Excluir Permanentemente
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var deleteUserModal = document.getElementById('deleteUserModal');
+if (deleteUserModal) {
+    deleteUserModal.addEventListener('show.bs.modal', function(e) {
+        var btn = e.relatedTarget;
+        var userId = btn.getAttribute('data-user-id');
+        var userName = btn.getAttribute('data-user-name');
+        var userRole = btn.getAttribute('data-user-role');
+
+        document.getElementById('deleteUserName').textContent = userName;
+        document.getElementById('deleteUserForm').action = '/users/' + userId + '/delete';
+
+        var adminWarning = document.getElementById('deleteUserAdminWarning');
+        if (userRole === 'admin') {
+            adminWarning.classList.remove('d-none');
+        } else {
+            adminWarning.classList.add('d-none');
+        }
+    });
+}
+</script>
 {% endblock %}

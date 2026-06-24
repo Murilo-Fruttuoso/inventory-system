@@ -14,6 +14,9 @@
             <i class="bi bi-bar-chart me-1"></i>Relatório
         </a>
         {% if current_user.role == 'admin' %}
+        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#bulkDeleteMonthlyModal">
+            <i class="bi bi-trash3 me-1"></i>Excluir em Lote
+        </button>
         <a class="btn btn-outline-success" href="{{ url_for('budget.import_monthly') }}">
             <i class="bi bi-upload me-1"></i>Importar Orçamento
         </a>
@@ -242,6 +245,78 @@
                         <i class="bi bi-trash3 me-1"></i>Excluir todos
                     </button>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Excluir em Lote (múltiplos critérios) -->
+<div class="modal fade" id="bulkDeleteMonthlyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-trash3-fill me-2"></i>Excluir Orçamentos Mensais em Lote
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Escolha um critério para exclusão em lote.</p>
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Atenção:</strong> Esta ação é <strong>irreversível</strong>.
+                </div>
+
+                <!-- Excluir mês/ano específico -->
+                <div class="card mb-3 border-warning">
+                    <div class="card-body">
+                        <h6 class="mb-2"><i class="bi bi-calendar-month me-2 text-warning"></i>Excluir por Mês/Ano</h6>
+                        <p class="small text-muted mb-3">Remove todos os orçamentos de um mês e ano específico.</p>
+                        <form method="post" action="{{ url_for('budget.monthly_bulk_delete') }}" class="d-flex gap-2 align-items-end flex-wrap"
+                              onsubmit="return confirm('Excluir TODOS os orçamentos do mês/ano selecionado? Irreversível.')">
+                            <input type="hidden" name="mode" value="month_year">
+                            <div>
+                                <label class="form-label small">Mês</label>
+                                <select class="form-select form-select-sm" name="month_filter" required>
+                                    {% for num, name in months %}
+                                    <option value="{{ num }}" {% if num == month %}selected{% endif %}>{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label small">Ano</label>
+                                <select class="form-select form-select-sm" name="year_filter" required>
+                                    {% for y in available_years %}
+                                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-warning btn-sm text-nowrap">
+                                <i class="bi bi-trash me-1"></i>Excluir Mês/Ano
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Excluir TODOS -->
+                <div class="card border-danger">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-danger"><i class="bi bi-radioactive me-2"></i>Excluir TODOS os orçamentos mensais</h6>
+                            <p class="small text-muted mb-0">Remove <strong>absolutamente todos</strong> os registros de orçamento mensal.</p>
+                        </div>
+                        <form method="post" action="{{ url_for('budget.monthly_bulk_delete') }}"
+                              onsubmit="return confirm('ATENÇÃO: Excluir ABSOLUTAMENTE TODOS os orçamentos mensais? Irreversível!')">
+                            <input type="hidden" name="mode" value="all">
+                            <button type="submit" class="btn btn-danger btn-sm ms-3 text-nowrap">
+                                <i class="bi bi-trash3 me-1"></i>Excluir Tudo
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>

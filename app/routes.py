@@ -21,7 +21,7 @@ from sqlalchemy.orm.exc import StaleDataError
 
 from app.decorators import admin_required
 from app.extensions import db
-from app.models import ActionLog, Product, StockMovement, User
+from app.models import AccountPlan, ActionLog, MonthlyBudget, Product, PurchaseRequest, StockMovement, User
 from app.services import (
     current_timestamp_for_filename,
     dashboard_stats,
@@ -644,6 +644,39 @@ def users_edit(user_id):
     return render_template("users/form.html", user_obj=user_obj)
 
 
+@main_bp.route("/users/<int:user_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def users_delete(user_id):
+    user_obj = User.query.get_or_404(user_id)
+    # Proteger: não pode excluir o próprio usuário logado
+    if user_obj.id == current_user.id:
+        flash("Você não pode excluir o próprio usuário logado.", "danger")
+        return redirect(url_for("main.users_list"))
+    # Proteger: não pode excluir o último administrador
+    if user_obj.role == "admin" and User.query.filter_by(role="admin").count() <= 1:
+        flash("Não é possível excluir o único administrador do sistema.", "danger")
+        return redirect(url_for("main.users_list"))
+    username = user_obj.username
+    try:
+        log_action(
+            current_user,
+            "usuario_excluido",
+            f"Usuário '{username}' (ID {user_id}) excluído permanentemente.",
+            entity_type="user",
+            entity_id=user_id,
+            ip_address=request.remote_addr,
+            commit=False,
+        )
+        db.session.delete(user_obj)
+        db.session.commit()
+        flash(f"Usuário '{username}' excluído com sucesso.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Erro ao excluir usuário: {exc}", "danger")
+    return redirect(url_for("main.users_list"))
+
+
 @main_bp.route("/logs")
 @login_required
 @admin_required
@@ -670,6 +703,88 @@ def logs_list():
         users=User.query.order_by(User.username.asc()).all(),
         selected_user_id=user_id,
         action=action,
+    )
+
+
+@main_bp.route("/admin")
+@login_required
+@admin_required
+def admin_panel():
+    """Painel administrativo centralizado com visão geral de todos os dados."""
+    from sqlalchemy import func
+
+    # Contagens
+    users_count = User.query.count()
+    users_active = User.query.filter_by(is_active_user=True).count()
+    users_admin = User.query.filter_by(role="admin").count()
+
+    accounts_count = AccountPlan.query.count()
+    accounts_active = AccountPlan.query.filter_by(is_active=True).count()
+
+    monthly_count = MonthlyBudget.query.count()
+    monthly_months = (
+        db.session.query(MonthlyBudget.year, MonthlyBudget.month)
+        .distinct()
+        .order_by(MonthlyBudget.year.desc(), MonthlyBudget.month.desc())
+        .limit(6)
+        .all()
+    )
+
+    requests_count = PurchaseRequest.query.count()
+    requests_imported = PurchaseRequest.query.filter(
+        PurchaseRequest.forms_id.isnot(None)
+    ).count()
+    requests_by_status = (
+        db.session.query(PurchaseRequest.status, func.count(PurchaseRequest.id))
+        .group_by(PurchaseRequest.status)
+        .all()
+    )
+
+    products_count = Product.query.count()
+    movements_count = StockMovement.query.count()
+
+    logs_count = ActionLog.query.count()
+    recent_logs = (
+        ActionLog.query.join(User, ActionLog.user_id == User.id, isouter=True)
+        .order_by(ActionLog.created_at.desc())
+        .limit(8)
+        .all()
+    )
+
+    STATUS_LABELS = {
+        "draft": "Rascunho",
+        "pending_quote": "Aguardando Cotação",
+        "quoted": "Cotado",
+        "pending_approval": "Aguardando Aprovação",
+        "approved": "Aprovado",
+        "rejected": "Reprovado",
+        "purchased": "Comprado",
+        "cancelled": "Cancelado",
+    }
+
+    MONTH_NAMES = [
+        "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+        "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+    ]
+
+    return render_template(
+        "admin/panel.html",
+        users_count=users_count,
+        users_active=users_active,
+        users_admin=users_admin,
+        accounts_count=accounts_count,
+        accounts_active=accounts_active,
+        monthly_count=monthly_count,
+        monthly_months=monthly_months,
+        requests_count=requests_count,
+        requests_imported=requests_imported,
+        requests_by_status=requests_by_status,
+        products_count=products_count,
+        movements_count=movements_count,
+        logs_count=logs_count,
+        recent_logs=recent_logs,
+        STATUS_LABELS=STATUS_LABELS,
+        MONTH_NAMES=MONTH_NAMES,
     )
 
 

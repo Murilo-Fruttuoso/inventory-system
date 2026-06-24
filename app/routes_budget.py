@@ -239,6 +239,128 @@ def accounts_delete(account_id):
     return redirect(url_for("budget.accounts_list"))
 
 
+@budget_bp.route("/accounts/bulk-delete", methods=["POST"])
+@login_required
+@admin_required
+def accounts_bulk_delete():
+    """Excluir Plano de Contas em lote.
+
+    Modos suportados (campo hidden 'mode'):
+      - 'selected' → IDs individuais via checkboxes
+      - 'inactive' → todas as contas inativas (is_active=False)
+      - 'all'      → TODAS as contas (inclusive orçamentos vinculados)
+    """
+    mode = request.form.get("mode", "selected")
+
+    if mode == "selected":
+        ids_raw = request.form.getlist("ids")
+        try:
+            ids = [int(i) for i in ids_raw if str(i).strip().isdigit()]
+        except ValueError:
+            ids = []
+        if not ids:
+            flash("Nenhuma conta selecionada.", "warning")
+            return redirect(url_for("budget.accounts_list"))
+        targets = AccountPlan.query.filter(AccountPlan.id.in_(ids)).all()
+
+    elif mode == "inactive":
+        targets = AccountPlan.query.filter_by(is_active=False).all()
+        if not targets:
+            flash("Nenhuma conta inativa encontrada.", "info")
+            return redirect(url_for("budget.accounts_list"))
+
+    elif mode == "all":
+        targets = AccountPlan.query.all()
+
+    else:
+        flash("Modo de exclusão desconhecido.", "danger")
+        return redirect(url_for("budget.accounts_list"))
+
+    count = len(targets)
+    if count == 0:
+        flash("Nenhuma conta encontrada para os critérios informados.", "info")
+        return redirect(url_for("budget.accounts_list"))
+
+    try:
+        for account in targets:
+            db.session.delete(account)
+        log_action(
+            current_user,
+            "plano_contas_excluido_lote",
+            f"{count} contas do plano excluídas em lote (modo: {mode}).",
+            ip_address=request.remote_addr,
+        )
+        db.session.commit()
+        flash(f"{count} conta(s) excluída(s) com sucesso.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Erro ao excluir em lote: {exc}", "danger")
+
+    return redirect(url_for("budget.accounts_list"))
+
+
+@budget_bp.route("/monthly/bulk-delete", methods=["POST"])
+@login_required
+@admin_required
+def monthly_bulk_delete():
+    """Excluir Orçamentos Mensais em lote.
+
+    Modos suportados:
+      - 'selected'  → IDs individuais via checkboxes
+      - 'month_year' → todos de um mês/ano específico
+      - 'all'        → TODOS os orçamentos mensais
+    """
+    mode = request.form.get("mode", "selected")
+
+    if mode == "selected":
+        ids_raw = request.form.getlist("ids")
+        try:
+            ids = [int(i) for i in ids_raw if str(i).strip().isdigit()]
+        except ValueError:
+            ids = []
+        if not ids:
+            flash("Nenhum orçamento selecionado.", "warning")
+            return redirect(url_for("budget.monthly_list"))
+        targets = MonthlyBudget.query.filter(MonthlyBudget.id.in_(ids)).all()
+
+    elif mode == "month_year":
+        month_val = request.form.get("month_filter", type=int)
+        year_val = request.form.get("year_filter", type=int)
+        if not month_val or not year_val:
+            flash("Selecione mês e ano.", "warning")
+            return redirect(url_for("budget.monthly_list"))
+        targets = MonthlyBudget.query.filter_by(month=month_val, year=year_val).all()
+
+    elif mode == "all":
+        targets = MonthlyBudget.query.all()
+
+    else:
+        flash("Modo de exclusão desconhecido.", "danger")
+        return redirect(url_for("budget.monthly_list"))
+
+    count = len(targets)
+    if count == 0:
+        flash("Nenhum orçamento encontrado para os critérios informados.", "info")
+        return redirect(url_for("budget.monthly_list"))
+
+    try:
+        for mb in targets:
+            db.session.delete(mb)
+        log_action(
+            current_user,
+            "orcamento_mensal_excluido_lote",
+            f"{count} orçamentos mensais excluídos em lote (modo: {mode}).",
+            ip_address=request.remote_addr,
+        )
+        db.session.commit()
+        flash(f"{count} orçamento(s) mensal(is) excluído(s) com sucesso.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Erro ao excluir em lote: {exc}", "danger")
+
+    return redirect(url_for("budget.monthly_list"))
+
+
 # -----------------------------------------------------------------------
 # Orçamentos
 # -----------------------------------------------------------------------

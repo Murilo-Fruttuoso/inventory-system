@@ -377,7 +377,7 @@ def change_status(pr_id):
 
 
 # -----------------------------------------------------------------------
-# Excluir solicitação (somente admin e rascunhos)
+# Excluir solicitação (somente admin)
 # -----------------------------------------------------------------------
 @purchasing_bp.route("/<int:pr_id>/delete", methods=["POST"])
 @login_required
@@ -388,6 +388,78 @@ def delete_request(pr_id):
     db.session.delete(pr)
     db.session.commit()
     flash(f"Solicitação '{title}' excluída.", "success")
+    return redirect(url_for("purchasing.list_requests"))
+
+
+# -----------------------------------------------------------------------
+# Excluir solicitações em lote (somente admin)
+# -----------------------------------------------------------------------
+@purchasing_bp.route("/bulk-delete", methods=["POST"])
+@login_required
+@admin_required
+def bulk_delete_requests():
+    """Excluir múltiplas solicitações de uma vez.
+
+    Modos suportados (campo hidden 'mode'):
+      - 'selected'  → IDs individuais selecionados via checkboxes
+      - 'imported'  → todas com forms_id IS NOT NULL (importadas em lote)
+      - 'status'    → todas com o status especificado em 'status_filter'
+      - 'all'       → TODAS as solicitações (cuidado!)
+    """
+    from sqlalchemy import and_
+
+    mode = request.form.get("mode", "selected")
+    query = PurchaseRequest.query
+
+    if mode == "selected":
+        ids_raw = request.form.getlist("ids")
+        try:
+            ids = [int(i) for i in ids_raw if i.strip().isdigit()]
+        except ValueError:
+            ids = []
+        if not ids:
+            flash("Nenhuma solicitação selecionada.", "warning")
+            return redirect(url_for("purchasing.list_requests"))
+        query = query.filter(PurchaseRequest.id.in_(ids))
+
+    elif mode == "imported":
+        query = query.filter(PurchaseRequest.forms_id.isnot(None))
+
+    elif mode == "status":
+        status_val = request.form.get("status_filter", "").strip()
+        if not status_val:
+            flash("Selecione um status para exclusão em lote.", "warning")
+            return redirect(url_for("purchasing.list_requests"))
+        query = query.filter(PurchaseRequest.status == status_val)
+
+    elif mode == "all":
+        pass  # sem filtro — exclui tudo
+
+    else:
+        flash("Modo de exclusão desconhecido.", "danger")
+        return redirect(url_for("purchasing.list_requests"))
+
+    targets = query.all()
+    count = len(targets)
+    if count == 0:
+        flash("Nenhuma solicitação encontrada para os critérios informados.", "info")
+        return redirect(url_for("purchasing.list_requests"))
+
+    try:
+        for pr in targets:
+            db.session.delete(pr)
+        log_action(
+            current_user,
+            "solicitacoes_excluidas_lote",
+            f"{count} solicitações excluídas em lote (modo: {mode}).",
+            ip_address=request.remote_addr,
+        )
+        db.session.commit()
+        flash(f"{count} solicitação(ões) excluída(s) com sucesso.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Erro ao excluir em lote: {exc}", "danger")
+
     return redirect(url_for("purchasing.list_requests"))
 
 
