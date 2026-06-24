@@ -197,6 +197,9 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
         description = str(row.get("descricao", "")).strip()
         location = str(row.get("localizacao", "")).strip()
         notes = str(row.get("observacoes", "")).strip()
+        brand = str(row.get("marca", "")).strip() or None
+        store = str(row.get("unidade_filial", "")).strip()
+        unit_value = max(parse_number(row.get("valor_unitario", 0)), 0.0)
 
         product = None
         raw_id = str(row.get("id", "")).strip()
@@ -210,6 +213,9 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
                 name=name,
                 category=category,
                 unit=unit,
+                brand=brand,
+                store=store,
+                unit_value=unit_value,
                 quantity=0,
                 quantity_min=quantity_min,
                 description=description,
@@ -227,6 +233,12 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
             product.description = description
             product.location = location
             product.notes = notes
+            if brand is not None:
+                product.brand = brand
+            if store:
+                product.store = store
+            if unit_value > 0:
+                product.unit_value = unit_value
             updated += 1
 
         if quantity != product.quantity:
@@ -235,8 +247,9 @@ def import_products_from_excel(file_storage, current_user, ip_address=None):
             movement = StockMovement(
                 product_id=product.id,
                 user_id=current_user.id,
+                store=store or product.store or "",
                 direction=direction,
-                reason="importacao_inicial" if previous_quantity == 0 and created > 0 else "ajuste_importacao",
+                reason="importacao_inicial" if previous_quantity == 0 else "ajuste_importacao",
                 quantity=abs(quantity - previous_quantity),
                 previous_quantity=previous_quantity,
                 new_quantity=quantity,

@@ -1,35 +1,171 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-xl-8">
+    <div class="col-xl-9">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="h3 mb-1">Importação inicial via Excel</h1>
-                <p class="text-muted mb-0">O Excel é usado apenas para entrada inicial e relatórios, nunca como base principal.</p>
+                <p class="text-muted mb-0">O Excel é usado apenas para entrada inicial e ajustes. Os dados são salvos no banco de dados.</p>
             </div>
             <a class="btn btn-outline-secondary" href="{{ url_for('main.products_list') }}">Voltar</a>
         </div>
+
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-body p-4">
                 <form method="post" enctype="multipart/form-data" class="vstack gap-3">
                     <div>
-                        <label class="form-label">Arquivo Excel</label>
+                        <label class="form-label fw-semibold">Arquivo Excel (.xlsx ou .xls)</label>
                         <input class="form-control" type="file" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">Apenas arquivos Excel são aceitos. Certifique-se de incluir as colunas obrigatórias.</div>
                     </div>
-                    <button class="btn btn-primary align-self-end">Importar</button>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-primary px-4">
+                            <i class="bi bi-upload me-2"></i>Importar produtos
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h2 class="h5">Colunas aceitas</h2>
-                <p class="text-muted">Obrigatórias: <strong>nome</strong>, <strong>categoria</strong>, <strong>unidade</strong>.</p>
-                <p class="text-muted mb-2">Opcionais: id, descricao, quantidade, quantidade_minima, localizacao, observacoes.</p>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h2 class="h5 mb-1">Colunas aceitas no Excel</h2>
+                <p class="text-muted small mb-3">Obrigatórias: <strong>nome</strong>, <strong>categoria</strong>, <strong>unidade</strong>. As demais são opcionais.</p>
+            </div>
+            <div class="card-body pt-0">
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>nome</th><th>categoria</th><th>unidade</th><th>quantidade</th><th>quantidade_minima</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Coluna</th>
+                                <th>Obrigatória</th>
+                                <th>Descrição</th>
+                                <th>Exemplo</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            <tr><td>Parafuso 10mm</td><td>Ferragens</td><td>un</td><td>150</td><td>20</td></tr>
+                            <tr>
+                                <td><code>nome</code></td>
+                                <td><span class="badge text-bg-danger">Sim</span></td>
+                                <td>Nome do produto</td>
+                                <td>Parafuso 10mm</td>
+                            </tr>
+                            <tr>
+                                <td><code>categoria</code></td>
+                                <td><span class="badge text-bg-danger">Sim</span></td>
+                                <td>Categoria do produto</td>
+                                <td>Ferragens</td>
+                            </tr>
+                            <tr>
+                                <td><code>unidade</code></td>
+                                <td><span class="badge text-bg-danger">Sim</span></td>
+                                <td>Unidade de medida</td>
+                                <td>un, kg, m, L</td>
+                            </tr>
+                            <tr>
+                                <td><code>marca</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Marca do produto</td>
+                                <td>Vonder, Tramontina</td>
+                            </tr>
+                            <tr>
+                                <td><code>unidade_filial</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Unidade ou filial de estoque</td>
+                                <td>SP, RJ, Matriz</td>
+                            </tr>
+                            <tr>
+                                <td><code>valor_unitario</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Valor unitário em R$</td>
+                                <td>12.50</td>
+                            </tr>
+                            <tr>
+                                <td><code>quantidade</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Quantidade em estoque</td>
+                                <td>150</td>
+                            </tr>
+                            <tr>
+                                <td><code>quantidade_minima</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Quantidade mínima (alerta)</td>
+                                <td>20</td>
+                            </tr>
+                            <tr>
+                                <td><code>localizacao</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Localização física no estoque</td>
+                                <td>Prateleira A3</td>
+                            </tr>
+                            <tr>
+                                <td><code>descricao</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Descrição complementar</td>
+                                <td>Parafuso sextavado galvanizado</td>
+                            </tr>
+                            <tr>
+                                <td><code>observacoes</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>Observações adicionais</td>
+                                <td>Fornecedor preferencial: XYZ</td>
+                            </tr>
+                            <tr>
+                                <td><code>id</code></td>
+                                <td><span class="badge text-bg-secondary">Não</span></td>
+                                <td>ID interno (para atualizar registro existente)</td>
+                                <td>42</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 pb-0">
+                <h2 class="h5 mb-1">Exemplo de planilha</h2>
+                <p class="text-muted small mb-3">Confira o exemplo abaixo com todos os campos principais:</p>
+            </div>
+            <div class="card-body pt-0">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>nome</th>
+                                <th>categoria</th>
+                                <th>unidade</th>
+                                <th>marca</th>
+                                <th>unidade_filial</th>
+                                <th>valor_unitario</th>
+                                <th>quantidade</th>
+                                <th>quantidade_minima</th>
+                                <th>localizacao</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Parafuso 10mm</td>
+                                <td>Ferragens</td>
+                                <td>un</td>
+                                <td>Vonder</td>
+                                <td>SP</td>
+                                <td>0.50</td>
+                                <td>500</td>
+                                <td>50</td>
+                                <td>Prateleira A1</td>
+                            </tr>
+                            <tr>
+                                <td>Martelo 500g</td>
+                                <td>Ferramentas</td>
+                                <td>un</td>
+                                <td>Tramontina</td>
+                                <td>RJ</td>
+                                <td>45.90</td>
+                                <td>30</td>
+                                <td>5</td>
+                                <td>Armário B2</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>

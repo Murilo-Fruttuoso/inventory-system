@@ -81,6 +81,7 @@
                     <th>Valor Mov.</th>
                     <th>Saldo</th>
                     <th>Responsável</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -98,9 +99,21 @@
                     <td>R$ {{ '%.2f'|format((movement.product.unit_value or 0) * movement.quantity) }}</td>
                     <td>{{ '%.2f'|format(movement.previous_quantity) }} → {{ '%.2f'|format(movement.new_quantity) }}</td>
                     <td>{{ movement.user.full_name }}</td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-end">
+                        <button type="button" class="btn btn-outline-danger btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#deleteMovementModal"
+                            data-movement-id="{{ movement.id }}"
+                            data-movement-info="{{ movement.product.name }} ({{ 'Entrada' if movement.direction == 'IN' else 'Saída' }} {{ '%.2f'|format(movement.quantity) }})">
+                            Excluir
+                        </button>
+                    </td>
+                    {% else %}
+                    <td></td>
+                    {% endif %}
                 </tr>
                 {% else %}
-                <tr><td colspan="12" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td></tr>
+                <tr><td colspan="13" class="text-center text-muted py-4">Nenhuma movimentação encontrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -122,4 +135,41 @@
     </ul>
 </nav>
 {% endif %}
+
+<!-- Modal de confirmação de exclusão de movimentação -->
+<div class="modal fade modal-confirm" id="deleteMovementModal" tabindex="-1" aria-labelledby="deleteMovementModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger" id="deleteMovementModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir a movimentação <strong id="deleteMovementInfo"></strong>?<br>
+        <span class="text-danger small">O saldo do produto será revertido automaticamente.</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteMovementForm" method="post" action="">
+          <button type="submit" class="btn btn-danger">Excluir definitivamente</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var deleteMovModal = document.getElementById('deleteMovementModal');
+if (deleteMovModal) {
+    deleteMovModal.addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        var movId = button.getAttribute('data-movement-id');
+        var movInfo = button.getAttribute('data-movement-info');
+        document.getElementById('deleteMovementInfo').textContent = movInfo;
+        document.getElementById('deleteMovementForm').action = '/movements/' + movId + '/delete';
+    });
+}
+</script>
 {% endblock %}

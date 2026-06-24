@@ -9,6 +9,10 @@
         <a class="btn btn-primary" href="{{ url_for('main.movements_new', product_id=product.id) }}">Nova movimentação</a>
         {% if current_user.role == 'admin' %}
         <a class="btn btn-outline-primary" href="{{ url_for('main.products_edit', product_id=product.id) }}">Editar</a>
+        <button type="button" class="btn btn-outline-danger"
+            data-bs-toggle="modal" data-bs-target="#deleteProductModal"
+            data-product-id="{{ product.id }}"
+            data-product-name="{{ product.name }}">Excluir</button>
         {% endif %}
     </div>
 </div>
@@ -72,4 +76,40 @@
         </div>
     </div>
 </div>
+<!-- Modal de confirmação de exclusão -->
+<div class="modal fade modal-confirm" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger" id="deleteProductModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir o produto <strong id="deleteProductName"></strong>?<br>
+        <span class="text-danger small">Esta ação é irreversível e removerá também todas as movimentações vinculadas.</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteProductForm" method="post" action="">
+          <button type="submit" class="btn btn-danger">Excluir definitivamente</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var deleteModal = document.getElementById('deleteProductModal');
+if (deleteModal) {
+    deleteModal.addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        var productId = button.getAttribute('data-product-id');
+        var productName = button.getAttribute('data-product-name');
+        document.getElementById('deleteProductName').textContent = productName;
+        document.getElementById('deleteProductForm').action = '/products/' + productId + '/delete';
+    });
+}
+</script>
 {% endblock %}

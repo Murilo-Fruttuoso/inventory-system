@@ -211,6 +211,31 @@ def products_edit(product_id):
     return render_template("products/form.html", product=product, stores=distinct_stores())
 
 
+@main_bp.route("/products/<int:product_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def products_delete(product_id):
+    product = Product.query.get_or_404(product_id)
+    name = product.name
+    try:
+        log_action(
+            current_user,
+            "produto_excluido",
+            f"Produto '{name}' (ID {product_id}) excluído permanentemente.",
+            entity_type="product",
+            entity_id=product_id,
+            ip_address=request.remote_addr,
+            commit=False,
+        )
+        db.session.delete(product)
+        db.session.commit()
+        flash(f"Produto '{name}' excluído com sucesso.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Não foi possível excluir o produto: {exc}", "danger")
+    return redirect(url_for("main.products_list"))
+
+
 @main_bp.route("/movements")
 @login_required
 def movements_list():
@@ -317,6 +342,37 @@ def movements_new():
         stores=distinct_stores(),
         selected_product_id=selected_product_id,
     )
+
+
+@main_bp.route("/movements/<int:movement_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def movements_delete(movement_id):
+    movement = StockMovement.query.get_or_404(movement_id)
+    product = movement.product
+    try:
+        # Reverter o saldo do produto ao excluir a movimentação
+        if movement.direction == "IN":
+            product.quantity = max(product.quantity - movement.quantity, 0)
+        else:
+            product.quantity = product.quantity + movement.quantity
+
+        log_action(
+            current_user,
+            "movimentacao_excluida",
+            f"Movimentação ID {movement_id} ({movement.direction} de {movement.quantity} em '{product.name}') excluída. Saldo revertido.",
+            entity_type="movement",
+            entity_id=movement_id,
+            ip_address=request.remote_addr,
+            commit=False,
+        )
+        db.session.delete(movement)
+        db.session.commit()
+        flash("Movimentação excluída e saldo do produto revertido.", "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Não foi possível excluir a movimentação: {exc}", "danger")
+    return redirect(url_for("main.movements_list"))
 
 
 @main_bp.route("/reports")
