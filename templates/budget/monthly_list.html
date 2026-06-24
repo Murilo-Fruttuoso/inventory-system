@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h1 class="h3 mb-1">
+            <i class="bi bi-calendar3 me-2 text-primary"></i>Orçamentos Mensais
+        </h1>
+        <p class="text-muted mb-0">
+            Visualize e gerencie os orçamentos mensais importados — {{ month_name }}/{{ year }}.
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-primary" href="{{ url_for('budget.budget_report', month=month, year=year) }}">
+            <i class="bi bi-bar-chart me-1"></i>Relatório
+        </a>
+        {% if current_user.role == 'admin' %}
+        <a class="btn btn-outline-success" href="{{ url_for('budget.import_monthly') }}">
+            <i class="bi bi-upload me-1"></i>Importar Orçamento
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Mês</label>
+                <select class="form-select" name="month">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if num == month %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ano</label>
+                <select class="form-select" name="year">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Busca</label>
+                <input class="form-control" name="q" value="{{ search }}" placeholder="Código ou descrição...">
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-primary flex-grow-1"><i class="bi bi-search me-1"></i>Filtrar</button>
+                <a class="btn btn-outline-secondary" href="{{ url_for('budget.monthly_list') }}">Limpar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cards de totais -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="small text-muted mb-1">Registros</div>
+                <div class="h5 mb-0 text-primary fw-bold">{{ total_items }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="small text-muted mb-1">Total Orçado</div>
+                <div class="h6 mb-0 text-primary fw-bold">{{ total_budgeted|brl }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="small text-muted mb-1">Total Ajustado</div>
+                <div class="h6 mb-0 text-info fw-bold">{{ total_adjusted|brl }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="small text-muted mb-1">Total Realizado</div>
+                <div class="h6 mb-0 text-danger fw-bold">{{ total_realized|brl }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+        <span class="fw-semibold small text-uppercase text-muted">
+            {{ total_items }} registro{{ 's' if total_items != 1 }} — {{ month_name }}/{{ year }}
+        </span>
+        {% if current_user.role == 'admin' and total_items > 0 %}
+        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteAllModal">
+            <i class="bi bi-trash3 me-1"></i>Excluir todos ({{ month_name }}/{{ year }})
+        </button>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Resumido</th>
+                    <th>Totalizadora</th>
+                    <th class="text-end">Orçado</th>
+                    <th class="text-end">Ajustado</th>
+                    <th class="text-end">Realizado</th>
+                    <th class="text-end">Saldo</th>
+                    {% if current_user.role == 'admin' %}
+                    <th class="text-end">Ação</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody class="small">
+                {% for mb, plan in rows %}
+                {% set saldo = (mb.budgeted_value or 0) - (mb.realized_value or 0) %}
+                <tr>
+                    <td><span class="badge text-bg-secondary font-monospace">{{ plan.code }}</span></td>
+                    <td class="fw-semibold">{{ plan.description }}</td>
+                    <td>
+                        {% if plan.summary %}
+                        <span class="badge text-bg-{{ 'primary' if plan.summary == 'RECEITA' else 'danger' if 'DESP' in plan.summary else 'secondary' }} small">
+                            {{ plan.summary }}
+                        </span>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td class="text-muted">{{ plan.totalizer or '—' }}</td>
+                    <td class="text-end">{{ (mb.budgeted_value or 0)|brl }}</td>
+                    <td class="text-end">{{ (mb.adjusted_value or 0)|brl }}</td>
+                    <td class="text-end text-danger">{{ (mb.realized_value or 0)|brl }}</td>
+                    <td class="text-end fw-bold {{ 'text-danger' if saldo < 0 else 'text-success' }}">
+                        {{ saldo|brl }}
+                    </td>
+                    {% if current_user.role == 'admin' %}
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-danger"
+                                data-bs-toggle="modal" data-bs-target="#deleteOneModal"
+                                data-mb-id="{{ mb.id }}"
+                                data-plan-name="{{ plan.code }} - {{ plan.description }}"
+                                title="Excluir este orçamento">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-5">
+                        <i class="bi bi-inbox display-6 d-block mb-2 opacity-25"></i>
+                        Nenhum orçamento mensal para {{ month_name }}/{{ year }}.
+                        {% if current_user.role == 'admin' %}
+                        <br><a href="{{ url_for('budget.import_monthly') }}" class="btn btn-sm btn-primary mt-2">
+                            <i class="bi bi-upload me-1"></i>Importar agora
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Paginação -->
+{% if total_pages > 1 %}
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('budget.monthly_list', month=month, year=year, q=search, page=page-1) }}">‹</a>
+        </li>
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('budget.monthly_list', month=month, year=year, q=search, page=p) }}">{{ p }}</a>
+            </li>
+            {% elif p == page - 3 or p == page + 3 %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+        {% endfor %}
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('budget.monthly_list', month=month, year=year, q=search, page=page+1) }}">›</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Modal: excluir um registro -->
+{% if current_user.role == 'admin' %}
+<div class="modal fade" id="deleteOneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmar exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Excluir orçamento de <strong id="deletePlanName"></strong>
+                para <strong>{{ month_name }}/{{ year }}</strong>?
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteOneForm" method="post">
+                    <button class="btn btn-danger">
+                        <i class="bi bi-trash3 me-1"></i>Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: excluir todos do mês/ano -->
+<div class="modal fade" id="deleteAllModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-octagon-fill me-2"></i>Excluir todos
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Isso excluirá <strong>todos os {{ total_items }} registros</strong> de
+                   <strong>{{ month_name }}/{{ year }}</strong>.</p>
+                <p class="text-danger small mb-0">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form action="{{ url_for('budget.monthly_delete_all') }}" method="post">
+                    <input type="hidden" name="month" value="{{ month }}">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <button class="btn btn-danger">
+                        <i class="bi bi-trash3 me-1"></i>Excluir todos
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+var m1 = document.getElementById('deleteOneModal');
+if (m1) {
+    m1.addEventListener('show.bs.modal', function(e) {
+        var btn = e.relatedTarget;
+        document.getElementById('deletePlanName').textContent = btn.getAttribute('data-plan-name');
+        document.getElementById('deleteOneForm').action =
+            '/budget/monthly/' + btn.getAttribute('data-mb-id') + '/delete';
+    });
+}
+</script>
+{% endblock %}

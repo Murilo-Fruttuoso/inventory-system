@@ -84,10 +84,10 @@
                     <td>{{ product.brand or '-' }}</td>
                     <td>{{ product.category }}</td>
                     <td>{{ product.unit }}</td>
-                    <td>R$ {{ '%.2f'|format(product.unit_value or 0) }}</td>
-                    <td>{{ '%.2f'|format(product.quantity) }}</td>
-                    <td>R$ {{ '%.2f'|format(product.total_stock_value) }}</td>
-                    <td>{{ '%.2f'|format(product.quantity_min) }}</td>
+                    <td>{{ (product.unit_value or 0)|brl }}</td>
+                    <td>{{ product.quantity|brl }}</td>
+                    <td>{{ product.total_stock_value|brl }}</td>
+                    <td>{{ product.quantity_min|brl }}</td>
                     <td>{{ product.location or '-' }}</td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">

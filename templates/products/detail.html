@@ -27,10 +27,10 @@
                     <li><strong>Unidade/Filial:</strong> <span class="badge text-bg-secondary fs-6">{{ product.store or '-' }}</span></li>
                     <li><strong>Marca:</strong> {{ product.brand or '-' }}</li>
                     <li><strong>Unid. de medida:</strong> {{ product.unit }}</li>
-                    <li><strong>Valor unitário:</strong> R$ {{ '%.2f'|format(product.unit_value or 0) }}</li>
-                    <li><strong>Estoque atual:</strong> <span class="badge text-bg-{{ 'danger' if product.low_stock else 'success' }}">{{ '%.2f'|format(product.quantity) }}</span></li>
-                    <li><strong>Valor total em estoque:</strong> <strong class="text-primary">R$ {{ '%.2f'|format(product.total_stock_value) }}</strong></li>
-                    <li><strong>Estoque mínimo:</strong> {{ '%.2f'|format(product.quantity_min) }}</li>
+                    <li><strong>Valor unitário:</strong> {{ (product.unit_value or 0)|brl }}</li>
+                    <li><strong>Estoque atual:</strong> <span class="badge text-bg-{{ 'danger' if product.low_stock else 'success' }}">{{ product.quantity|brl }}</span></li>
+                    <li><strong>Valor total em estoque:</strong> <strong class="text-primary">{{ product.total_stock_value|brl }}</strong></li>
+                    <li><strong>Estoque mínimo:</strong> {{ product.quantity_min|brl }}</li>
                     <li><strong>Localização:</strong> {{ product.location or '-' }}</li>
                     <li><strong>Descrição:</strong> {{ product.description or 'Sem descrição' }}</li>
                     <li><strong>Observações:</strong> {{ product.notes or 'Sem observações' }}</li>
@@ -62,8 +62,8 @@
                                 <td>{{ movement.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                                 <td><span class="badge text-bg-{{ 'success' if movement.direction == 'IN' else 'danger' }}">{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }}</span></td>
                                 <td>{{ movement.reason }}</td>
-                                <td>{{ '%.2f'|format(movement.quantity) }}</td>
-                                <td>{{ '%.2f'|format(movement.previous_quantity) }} → {{ '%.2f'|format(movement.new_quantity) }}</td>
+                                <td>{{ movement.quantity|brl }}</td>
+                                <td>{{ movement.previous_quantity|brl }} → {{ movement.new_quantity|brl }}</td>
                                 <td>{{ movement.user.full_name }}</td>
                             </tr>
                             {% else %}

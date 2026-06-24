@@ -71,7 +71,7 @@
                     </td>
                     <td>
                         {% if pr.total_estimated %}
-                        R$ {{ '%.2f'|format(pr.total_estimated) }}
+                        {{ pr.total_estimated|brl }}
                         {% else %}-{% endif %}
                     </td>
                     <td class="text-end">

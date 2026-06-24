@@ -94,17 +94,17 @@
                     <td>{{ movement.product.category }}</td>
                     <td><span class="badge text-bg-{{ 'success' if movement.direction == 'IN' else 'danger' }}">{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }}</span></td>
                     <td>{{ movement.reason }}</td>
-                    <td>{{ '%.2f'|format(movement.quantity) }}</td>
-                    <td>R$ {{ '%.2f'|format(movement.product.unit_value or 0) }}</td>
-                    <td>R$ {{ '%.2f'|format((movement.product.unit_value or 0) * movement.quantity) }}</td>
-                    <td>{{ '%.2f'|format(movement.previous_quantity) }} → {{ '%.2f'|format(movement.new_quantity) }}</td>
+                    <td>{{ movement.quantity|brl }}</td>
+                    <td>{{ (movement.product.unit_value or 0)|brl }}</td>
+                    <td>{{ (movement.product.unit_value or 0) * movement.quantity|brl }}</td>
+                    <td>{{ movement.previous_quantity|brl }} → {{ movement.new_quantity|brl }}</td>
                     <td>{{ movement.user.full_name }}</td>
                     {% if current_user.role == 'admin' %}
                     <td class="text-end">
                         <button type="button" class="btn btn-outline-danger btn-sm"
                             data-bs-toggle="modal" data-bs-target="#deleteMovementModal"
                             data-movement-id="{{ movement.id }}"
-                            data-movement-info="{{ movement.product.name }} ({{ 'Entrada' if movement.direction == 'IN' else 'Saída' }} {{ '%.2f'|format(movement.quantity) }})">
+                            data-movement-info="{{ movement.product.name }} ({{ 'Entrada' if movement.direction == 'IN' else 'Saída' }} {{ movement.quantity|brl }})">
                             Excluir
                         </button>
                     </td>

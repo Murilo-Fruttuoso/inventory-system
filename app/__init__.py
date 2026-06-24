@@ -84,6 +84,21 @@ def create_app():
             "pending_approvals_count": pending_count,
         }
 
+    # ── Filtro Jinja2: formata número como moeda brasileira (R$ 1.234,56) ──
+    @app.template_filter("brl")
+    def brl_filter(value):
+        """Converte float/int para formato monetário brasileiro: R$ 1.234,56"""
+        try:
+            v = float(value or 0)
+            # Formata com 2 casas decimais e separador de milhar
+            formatted = f"{abs(v):,.2f}"          # "1,234.56"
+            formatted = formatted.replace(",", "X").replace(".", ",").replace("X", ".")
+            # "1.234,56"
+            prefix = "R$ " if v >= 0 else "R$ -"
+            return f"{prefix}{formatted}"
+        except (TypeError, ValueError):
+            return "R$ 0,00"
+
     with app.app_context():
         db.create_all()
         _safe_migrate(app)

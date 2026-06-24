@@ -33,7 +33,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center">
                 <div class="text-muted small fw-semibold text-uppercase">Total Gasto (Aprovado/Comprado)</div>
-                <div class="h4 mb-0 text-primary">R$ {{ '%.2f'|format(total_spend) }}</div>
+                <div class="h4 mb-0 text-primary">{{ total_spend|brl }}</div>
             </div>
         </div>
     </div>
@@ -88,7 +88,7 @@
                                     </div>
                                 </td>
                                 <td><span class="badge text-bg-secondary">{{ r.qty }}</span></td>
-                                <td class="fw-bold">R$ {{ '%.2f'|format(r.total or 0) }}</td>
+                                <td class="fw-bold">{{ (r.total or 0)|brl }}</td>
                                 <td class="small text-muted">{{ pct }}%</td>
                                 <td>
                                     <a class="btn btn-xs btn-sm btn-outline-primary"
@@ -145,7 +145,7 @@
                                     </a>
                                 </td>
                                 <td>{{ pr.purchase_date.strftime('%d/%m/%Y') if pr.purchase_date else '-' }}</td>
-                                <td class="fw-bold">R$ {{ '%.2f'|format(q.total_value) }}</td>
+                                <td class="fw-bold">{{ q.total_value|brl }}</td>
                                 <td><span class="badge text-bg-{{ pr.status_color }}">{{ pr.status_label }}</span></td>
                             </tr>
                             {% endfor %}

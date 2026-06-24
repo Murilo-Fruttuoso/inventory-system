@@ -294,6 +294,7 @@ def import_accounts():
     if request.method == "POST":
         import os
         import pandas as pd
+        from app.services import parse_number as pn
 
         file = request.files.get("file")
         if not file or not file.filename:
@@ -306,28 +307,61 @@ def import_accounts():
             return redirect(url_for("budget.import_accounts"))
 
         try:
-            df = pd.read_excel(file)
+            # Lê apenas as colunas relevantes para economizar memória
+            # O arquivo PlanoDeContas tem 8000+ linhas mas apenas ~87 códigos únicos
+            df = pd.read_excel(file, dtype=str)
             df.columns = [str(c).strip().lower() for c in df.columns]
+            df = df.fillna("")
+
+            # ── DEDUPLICAÇÃO ────────────────────────────────────────────────
+            # O arquivo tem múltiplas linhas por código (uma por lançamento).
+            # Agrupamos por código e pegamos a primeira linha de cada grupo
+            # para extrair os metadados do plano (descrição, resumido, etc.).
+            # O valor "Orçado" é o mesmo em todas as linhas do mesmo código.
+            col_code = "plano"
+            if col_code not in df.columns:
+                flash("Coluna 'Plano' não encontrada no arquivo.", "danger")
+                return redirect(url_for("budget.import_accounts"))
+
+            # Normalizar códigos e descartar inválidos
+            def clean_code(raw):
+                raw = str(raw).strip()
+                if not raw or raw.lower() in ("nan", ""):
+                    return None
+                try:
+                    return str(int(float(raw)))
+                except (ValueError, OverflowError):
+                    c = raw.replace(".0", "") if raw.endswith(".0") else raw
+                    return c if c else None
+
+            df["_code_clean"] = df[col_code].apply(clean_code)
+            df = df[df["_code_clean"].notna()].copy()
+
+            # Pegar primeira linha de cada código único (metadados são iguais em todas)
+            df_unique = df.drop_duplicates(subset=["_code_clean"], keep="first")
+            total_rows = len(df)
+            unique_count = len(df_unique)
+
             created = 0
             updated = 0
-            for _, row in df.fillna("").iterrows():
-                code = str(row.get("plano", "")).strip()
-                description = str(row.get("descrição", row.get("descricao", ""))).strip()
-                if not code or not description:
-                    continue
+            BATCH = 50  # commit a cada N registros para evitar lock de banco
 
-                # Clean numeric code (handles scientific notation like 1.01e10)
-                try:
-                    code_clean = str(int(float(code)))
-                except (ValueError, OverflowError):
-                    code_clean = code.replace(".0", "") if code.endswith(".0") else code
+            year_now = datetime.utcnow().year
+
+            for i, (_, row) in enumerate(df_unique.iterrows()):
+                code_clean = row["_code_clean"]
+                description = str(
+                    row.get("descrição", row.get("descricao", ""))
+                ).strip()
+                if not description:
+                    description = code_clean  # fallback
 
                 summary = str(row.get("resumido", "")).strip() or None
                 totalizer = str(row.get("totalizadora", "")).strip() or None
                 account_type = str(row.get("tipo", "")).strip() or None
                 cost_center = str(row.get("empresa/unidade", "")).strip() or None
                 area = str(row.get("área", row.get("area", ""))).strip() or None
-                budgeted_raw = row.get("orçado", row.get("orcado", 0))
+                budgeted_raw = row.get("orçado", row.get("orcado", ""))
 
                 existing = AccountPlan.query.filter_by(code=code_clean).first()
                 if existing:
@@ -339,9 +373,10 @@ def import_accounts():
                         existing.cost_center = cost_center
                     if area:
                         existing.area = area
+                    acc_obj = existing
                     updated += 1
                 else:
-                    acc = AccountPlan(
+                    acc_obj = AccountPlan(
                         code=code_clean,
                         description=description,
                         summary=summary,
@@ -350,39 +385,45 @@ def import_accounts():
                         cost_center=cost_center,
                         area=area,
                     )
-                    db.session.add(acc)
+                    db.session.add(acc_obj)
                     db.session.flush()
                     created += 1
 
-                # Seed budget if "Orçado" column has a value
-                if budgeted_raw and str(budgeted_raw).strip() not in ("", "0"):
-                    from app.services import parse_number as pn
-                    budgeted = pn(budgeted_raw)
-                    if budgeted > 0:
-                        year_now = datetime.utcnow().year
-                        acc_obj = AccountPlan.query.filter_by(code=code_clean).first()
-                        if acc_obj:
-                            b = Budget.query.filter_by(
-                                account_plan_id=acc_obj.id, year=year_now, month=None
-                            ).first()
-                            if not b:
-                                db.session.add(
-                                    Budget(
-                                        account_plan_id=acc_obj.id,
-                                        year=year_now,
-                                        month=None,
-                                        budgeted_value=budgeted,
-                                    )
+                # Seed orçamento anual se coluna "Orçado" tiver valor
+                budgeted_str = str(budgeted_raw).strip()
+                if budgeted_str and budgeted_str not in ("", "0", "0.0", "nan"):
+                    try:
+                        budgeted_val = abs(pn(budgeted_raw))
+                    except Exception:
+                        budgeted_val = 0.0
+                    if budgeted_val > 0 and acc_obj.id:
+                        b = Budget.query.filter_by(
+                            account_plan_id=acc_obj.id, year=year_now, month=None
+                        ).first()
+                        if not b:
+                            db.session.add(
+                                Budget(
+                                    account_plan_id=acc_obj.id,
+                                    year=year_now,
+                                    month=None,
+                                    budgeted_value=budgeted_val,
                                 )
+                            )
+
+                # Commit em lotes para evitar timeout e lock excessivo
+                if (i + 1) % BATCH == 0:
+                    db.session.commit()
 
             db.session.commit()
             flash(
-                f"Importação concluída: {created} criadas, {updated} atualizadas.",
+                f"Importação concluída: {created} contas criadas, {updated} atualizadas "
+                f"(arquivo tinha {total_rows} linhas → {unique_count} planos únicos).",
                 "success",
             )
             return redirect(url_for("budget.accounts_list"))
         except Exception as exc:
             db.session.rollback()
+            current_app.logger.exception("Erro na importação de plano de contas")
             flash(f"Erro na importação: {exc}", "danger")
 
     return render_template("budget/import_accounts.html")
@@ -413,22 +454,36 @@ def import_monthly():
         year_form = request.form.get("year", type=int) or datetime.utcnow().year
 
         try:
-            # O arquivo tem uma linha de título na row 0 ("ORÇAMENTO DESPESAS - JUNHO 2026")
-            # e os cabeçalhos reais na row 1 — por isso usamos header=1
-            # Tentamos header=1 primeiro; se não encontrar "CÓDIGO DO PLANO", tentamos header=0
-            df = pd.read_excel(file, header=1)
-            cols_upper = [str(c).strip().upper() for c in df.columns]
-            if not any("CÓDIGO" in c or "CODIGO" in c for c in cols_upper):
-                # Fallback: ler com header=0 e verificar se primeira linha é o cabeçalho real
-                file.seek(0)
-                df = pd.read_excel(file, header=0)
-                first_row = df.iloc[0]
-                if str(first_row.iloc[0]).strip().upper().startswith("CÓDIGO"):
-                    df.columns = [str(v).strip() for v in first_row.values]
-                    df = df.iloc[1:].reset_index(drop=True)
+            # Auto-detectar estrutura do arquivo:
+            # Formato A (novo, sem linha de título): header na row 0, colunas sem ":"
+            # Formato B (antigo, com linha de título "ORÇAMENTO DESPESAS..."): header na row 1
+            # Estratégia: tentar header=0 primeiro; se primeira célula não for código numérico
+            # e sim texto de título, então usar header=1.
+            df = pd.read_excel(file, header=0, dtype=str)
+            df.columns = [str(c).strip() for c in df.columns]
 
-            # Normalizar colunas para UPPERCASE sem espaços extras
-            # Também remover dois-pontos finais (ex: "ORÇADO - JUNHO:" → "ORÇADO - JUNHO")
+            # Verificar se é Formato B: primeira coluna tem nome genérico (título mesclado)
+            # e primeira linha de dados contém o verdadeiro cabeçalho (começa com "CÓDIGO")
+            first_col_name = str(df.columns[0]).strip().upper()
+            has_real_header_in_row0 = any(
+                k in first_col_name for k in ("CÓDIGO", "CODIGO", "PLANO", "CÓDIGO DO PLANO")
+            )
+            if not has_real_header_in_row0:
+                # Formato B: a row 0 dos dados pode ser o cabeçalho real
+                first_data_row = df.iloc[0]
+                if str(first_data_row.iloc[0]).strip().upper().startswith("CÓDIGO"):
+                    # Usar row 0 como header
+                    df.columns = [str(v).strip() for v in first_data_row.values]
+                    df = df.iloc[1:].reset_index(drop=True)
+                else:
+                    # Tentar header=1 (linha de título na row 0)
+                    file.seek(0)
+                    df2 = pd.read_excel(file, header=1, dtype=str)
+                    cols2 = [str(c).strip().upper() for c in df2.columns]
+                    if any("CÓDIGO" in c or "CODIGO" in c for c in cols2):
+                        df = df2
+
+            # Normalizar colunas: UPPERCASE, sem espaços extras, sem dois-pontos finais
             df.columns = [str(c).strip().upper().rstrip(":").strip() for c in df.columns]
             df = df.fillna("")
 
@@ -522,9 +577,10 @@ def import_monthly():
                 f"para {month_form:02d}/{year_form}.",
                 "success",
             )
-            return redirect(url_for("budget.budget_report"))
+            return redirect(url_for("budget.monthly_list", month=month_form, year=year_form))
         except Exception as exc:
             db.session.rollback()
+            current_app.logger.exception("Erro na importação mensal")
             flash(f"Erro na importação: {exc}", "danger")
 
     months = [(i, m) for i, m in enumerate(
@@ -535,6 +591,134 @@ def import_monthly():
                            months=months,
                            current_month=datetime.utcnow().month,
                            current_year=datetime.utcnow().year)
+
+
+# -----------------------------------------------------------------------
+# Visualizar e excluir Orçamentos Mensais
+# -----------------------------------------------------------------------
+MONTH_NAMES = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+]
+
+
+@budget_bp.route("/monthly")
+@login_required
+@buyer_required
+def monthly_list():
+    """Lista todos os registros de orçamento mensal com filtros de mês/ano."""
+    month = request.args.get("month", datetime.utcnow().month, type=int)
+    year = request.args.get("year", datetime.utcnow().year, type=int)
+    search = request.args.get("q", "").strip()
+    page = request.args.get("page", 1, type=int)
+
+    q = (
+        db.session.query(MonthlyBudget, AccountPlan)
+        .join(AccountPlan, MonthlyBudget.account_plan_id == AccountPlan.id)
+        .filter(MonthlyBudget.year == year, MonthlyBudget.month == month)
+    )
+    if search:
+        like = f"%{search}%"
+        q = q.filter(
+            AccountPlan.code.ilike(like) | AccountPlan.description.ilike(like)
+        )
+
+    # Totais (sem paginar)
+    all_rows = q.order_by(AccountPlan.code.asc()).all()
+    total_budgeted = sum(mb.budgeted_value or 0 for mb, _ in all_rows)
+    total_adjusted = sum(mb.adjusted_value or 0 for mb, _ in all_rows)
+    total_realized = sum(mb.realized_value or 0 for mb, _ in all_rows)
+
+    # Anos disponíveis
+    years_q = (
+        db.session.query(MonthlyBudget.year)
+        .distinct()
+        .order_by(MonthlyBudget.year.desc())
+        .all()
+    )
+    available_years = [r[0] for r in years_q] or [datetime.utcnow().year]
+
+    months_sel = list(enumerate(MONTH_NAMES, start=1))
+
+    # Paginação manual
+    per_page = 50
+    total_items = len(all_rows)
+    total_pages = max(1, (total_items + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    rows_page = all_rows[start: start + per_page]
+
+    return render_template(
+        "budget/monthly_list.html",
+        rows=rows_page,
+        month=month,
+        year=year,
+        search=search,
+        months=months_sel,
+        available_years=available_years,
+        total_budgeted=total_budgeted,
+        total_adjusted=total_adjusted,
+        total_realized=total_realized,
+        total_items=total_items,
+        page=page,
+        total_pages=total_pages,
+        month_name=MONTH_NAMES[month - 1] if 1 <= month <= 12 else str(month),
+    )
+
+
+@budget_bp.route("/monthly/<int:mb_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def monthly_delete(mb_id):
+    """Exclui um registro de orçamento mensal."""
+    mb = MonthlyBudget.query.get_or_404(mb_id)
+    plan = AccountPlan.query.get(mb.account_plan_id)
+    month = mb.month
+    year = mb.year
+    try:
+        db.session.delete(mb)
+        db.session.commit()
+        plan_name = f"{plan.code} - {plan.description}" if plan else f"ID {mb.account_plan_id}"
+        flash(f"Orçamento '{plan_name}' ({MONTH_NAMES[month-1]}/{year}) excluído.", "success")
+        log_action(
+            current_user,
+            "orcamento_mensal_excluido",
+            f"MonthlyBudget #{mb_id} ({plan_name} {month:02d}/{year}) excluído.",
+            ip_address=request.remote_addr,
+        )
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Erro ao excluir: {exc}", "danger")
+    return redirect(url_for("budget.monthly_list", month=month, year=year))
+
+
+@budget_bp.route("/monthly/delete-all", methods=["POST"])
+@login_required
+@admin_required
+def monthly_delete_all():
+    """Exclui TODOS os orçamentos de um mês/ano (com confirmação)."""
+    month = request.form.get("month", type=int)
+    year = request.form.get("year", type=int)
+    if not month or not year:
+        flash("Mês e ano são obrigatórios.", "danger")
+        return redirect(url_for("budget.monthly_list"))
+    try:
+        deleted = MonthlyBudget.query.filter_by(year=year, month=month).delete()
+        db.session.commit()
+        flash(
+            f"{deleted} registros de {MONTH_NAMES[month-1]}/{year} excluídos.",
+            "success",
+        )
+        log_action(
+            current_user,
+            "orcamento_mensal_excluido_lote",
+            f"Todos os MonthlyBudgets de {month:02d}/{year} excluídos ({deleted} registros).",
+            ip_address=request.remote_addr,
+        )
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Erro ao excluir: {exc}", "danger")
+    return redirect(url_for("budget.monthly_list", month=month, year=year))
 
 
 # -----------------------------------------------------------------------

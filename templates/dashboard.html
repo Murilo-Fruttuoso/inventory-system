@@ -26,7 +26,7 @@
         <div class="card metric-card h-100 border-0 shadow-sm">
             <div class="card-body">
                 <div class="metric-label">Quantidade total em estoque</div>
-                <div class="metric-value">{{ '%.2f'|format(total_quantity) }}</div>
+                <div class="metric-value">{{ total_quantity|brl }}</div>
             </div>
         </div>
     </div>
@@ -34,7 +34,7 @@
         <div class="card metric-card h-100 border-0 shadow-sm">
             <div class="card-body">
                 <div class="metric-label">Valor total em estoque</div>
-                <div class="metric-value" style="font-size:1.4rem;">R$ {{ '%.2f'|format(total_stock_value) }}</div>
+                <div class="metric-value" style="font-size:1.4rem;">{{ total_stock_value|brl }}</div>
             </div>
         </div>
     </div>
@@ -62,7 +62,7 @@
                         <div class="card-body py-3">
                             <div class="fw-bold text-primary mb-1">{{ store_name }}</div>
                             <div class="small text-muted">{{ info.products }} produto{{ 's' if info.products != 1 else '' }}</div>
-                            <div class="small fw-semibold mt-1">R$ {{ '%.2f'|format(info.value) }}</div>
+                            <div class="small fw-semibold mt-1">{{ info.value|brl }}</div>
                         </div>
                     </div>
                 </a>
@@ -107,7 +107,7 @@
                                     </span>
                                     <div class="small text-muted">{{ movement.reason }}</div>
                                 </td>
-                                <td>{{ '%.2f'|format(movement.quantity) }}</td>
+                                <td>{{ movement.quantity|brl }}</td>
                                 <td>{{ movement.user.full_name }}</td>
                             </tr>
                             {% else %}
@@ -135,10 +135,10 @@
                                 <span class="badge text-bg-secondary">{{ product.store or '-' }}</span>
                                 {{ product.category }}
                                 {% if product.brand %} · {{ product.brand }}{% endif %}
-                                · mín. {{ '%.2f'|format(product.quantity_min) }}
+                                · mín. {{ product.quantity_min|brl }}
                             </div>
                         </div>
-                        <span class="badge text-bg-danger">{{ '%.2f'|format(product.quantity) }}</span>
+                        <span class="badge text-bg-danger">{{ product.quantity|brl }}</span>
                     </a>
                     {% else %}
                     <div class="text-muted py-4 text-center">Nenhum produto abaixo do mínimo.</div>

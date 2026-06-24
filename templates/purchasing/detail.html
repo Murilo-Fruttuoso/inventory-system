@@ -62,10 +62,10 @@
                     </li>
                     {% endif %}
                     {% if pr.total_estimated %}
-                    <li><strong>Valor Estimado:</strong> <span class="fw-bold text-primary">R$ {{ '%.2f'|format(pr.total_estimated) }}</span></li>
+                    <li><strong>Valor Estimado:</strong> <span class="fw-bold text-primary">{{ pr.total_estimated|brl }}</span></li>
                     {% endif %}
                     {% if pr.total_approved %}
-                    <li><strong>Valor Aprovado:</strong> <span class="fw-bold text-success">R$ {{ '%.2f'|format(pr.total_approved) }}</span></li>
+                    <li><strong>Valor Aprovado:</strong> <span class="fw-bold text-success">{{ pr.total_approved|brl }}</span></li>
                     {% endif %}
                     {% if pr.invoice_number %}<li><strong>Nota Fiscal:</strong> {{ pr.invoice_number }}</li>{% endif %}
                     {% if pr.legale_launch %}<li><strong>Lançamento Legale:</strong> {{ pr.legale_launch }}</li>{% endif %}
@@ -155,10 +155,10 @@
                             {% endif %}
                         </td>
                         <td>{{ q.brand or '-' }}</td>
-                        <td>{{ '%.2f'|format(q.quantity) }}</td>
-                        <td>R$ {{ '%.2f'|format(q.unit_price) }}</td>
-                        <td>R$ {{ '%.2f'|format(q.freight or 0) }}</td>
-                        <td class="fw-bold">R$ {{ '%.2f'|format(q.total_value) }}</td>
+                        <td>{{ q.quantity|brl }}</td>
+                        <td>{{ q.unit_price|brl }}</td>
+                        <td>{{ (q.freight or 0)|brl }}</td>
+                        <td class="fw-bold">{{ q.total_value|brl }}</td>
                         <td>{{ q.payment_method or '-' }}</td>
                         <td>
                             {% if q.installments and q.installments > 1 %}

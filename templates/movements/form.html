@@ -19,10 +19,10 @@
                             {% for product in products %}
                             <option value="{{ product.id }}"
                                 data-brand="{{ product.brand or '-' }}"
-                                data-unit-value="{{ '%.2f'|format(product.unit_value or 0) }}"
+                                data-unit-value="{{ product.unit_value or 0 }}"
                                 data-store="{{ product.store or '' }}"
                                 {% if selected_product_id == product.id %}selected{% endif %}>
-                                {{ product.name }}{% if product.store %} [{{ product.store }}]{% endif %} (saldo {{ '%.2f'|format(product.quantity) }})
+                                {{ product.name }}{% if product.store %} [{{ product.store }}]{% endif %} (saldo {{ product.quantity|brl }})
                             </option>
                             {% endfor %}
                         </select>

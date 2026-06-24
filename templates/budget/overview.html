@@ -47,7 +47,7 @@
         <div class="card border-0 shadow-sm metric-card">
             <div class="card-body">
                 <div class="metric-label">Total Orçado</div>
-                <div class="metric-value" style="font-size:1.5rem;">R$ {{ '%.2f'|format(total_budgeted) }}</div>
+                <div class="metric-value" style="font-size:1.5rem;">{{ total_budgeted|brl }}</div>
             </div>
         </div>
     </div>
@@ -55,7 +55,7 @@
         <div class="card border-0 shadow-sm metric-card">
             <div class="card-body">
                 <div class="metric-label">Total Utilizado</div>
-                <div class="metric-value text-danger" style="font-size:1.5rem;">R$ {{ '%.2f'|format(total_used) }}</div>
+                <div class="metric-value text-danger" style="font-size:1.5rem;">{{ total_used|brl }}</div>
             </div>
         </div>
     </div>
@@ -64,7 +64,7 @@
             <div class="card-body">
                 <div class="metric-label">Saldo Disponível</div>
                 <div class="metric-value {% if total_available < 0 %}text-danger{% else %}text-success{% endif %}" style="font-size:1.5rem;">
-                    R$ {{ '%.2f'|format(total_available) }}
+                    {{ total_available|brl }}
                 </div>
             </div>
         </div>
@@ -104,14 +104,14 @@
                     <td class="small">{{ row.plan.cost_center or '-' }}</td>
                     <td>
                         {% if row.budgeted > 0 %}
-                        R$ {{ '%.2f'|format(row.budgeted) }}
+                        {{ row.budgeted|brl }}
                         {% else %}
                         <span class="text-muted small">Não definido</span>
                         {% endif %}
                     </td>
-                    <td>R$ {{ '%.2f'|format(row.used) }}</td>
+                    <td>{{ row.used|brl }}</td>
                     <td class="fw-bold {% if row.available < 0 %}text-danger{% else %}text-success{% endif %}">
-                        R$ {{ '%.2f'|format(row.available) }}
+                        {{ row.available|brl }}
                     </td>
                     <td>
                         {% if row.budgeted > 0 %}

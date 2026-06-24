@@ -60,7 +60,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-3">
                 <div class="text-muted small fw-semibold text-uppercase">Orçado</div>
-                <div class="h5 mb-0 text-primary">R$ {{ '%.2f'|format(total_budgeted)|replace('.', ',')|replace(',', '.', 1) if total_budgeted else '0,00' }}</div>
+                <div class="h5 mb-0 text-primary">{{ total_budgeted|brl if total_budgeted else 'R$ 0,00' }}</div>
             </div>
         </div>
     </div>
@@ -68,7 +68,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-3">
                 <div class="text-muted small fw-semibold text-uppercase">Ajustado</div>
-                <div class="h5 mb-0 text-info">R$ {{ '%.2f'|format(total_adjusted)|replace('.', ',')|replace(',', '.', 1) if total_adjusted else '0,00' }}</div>
+                <div class="h5 mb-0 text-info">{{ total_adjusted|brl if total_adjusted else 'R$ 0,00' }}</div>
             </div>
         </div>
     </div>
@@ -76,7 +76,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-3">
                 <div class="text-muted small fw-semibold text-uppercase">Realizado</div>
-                <div class="h5 mb-0 text-danger">R$ {{ '%.2f'|format(total_realized)|replace('.', ',')|replace(',', '.', 1) if total_realized else '0,00' }}</div>
+                <div class="h5 mb-0 text-danger">{{ total_realized|brl if total_realized else 'R$ 0,00' }}</div>
             </div>
         </div>
     </div>
@@ -85,7 +85,7 @@
             <div class="card-body text-center py-3">
                 <div class="text-muted small fw-semibold text-uppercase">Saldo Disponível</div>
                 <div class="h5 mb-0 {% if total_available < 0 %}text-danger{% else %}text-success{% endif %}">
-                    R$ {{ '%.2f'|format(total_available)|replace('.', ',')|replace(',', '.', 1) if total_available else '0,00' }}
+                    {{ total_available|brl if total_available else 'R$ 0,00' }}
                 </div>
             </div>
         </div>
@@ -114,9 +114,9 @@
                 {% set pct = (r.realized / r.budgeted * 100)|round(1) if r.budgeted > 0 else 0 %}
                 <tr class="{% if r.available < 0 %}table-danger{% elif pct >= 80 %}table-warning{% endif %}">
                     <td class="fw-semibold">{{ r.area }}</td>
-                    <td>{% if r.budgeted %}R$ {{ '%.2f'|format(r.budgeted) }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-                    <td>R$ {{ '%.2f'|format(r.realized) }}</td>
-                    <td class="{% if r.available < 0 %}text-danger fw-bold{% else %}text-success{% endif %}">R$ {{ '%.2f'|format(r.available) }}</td>
+                    <td>{% if r.budgeted %}{{ r.budgeted|brl }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>{{ r.realized|brl }}</td>
+                    <td class="{% if r.available < 0 %}text-danger fw-bold{% else %}text-success{% endif %}">{{ r.available|brl }}</td>
                     <td>
                         {% if r.budgeted > 0 %}
                         <div class="d-flex align-items-center gap-2">
@@ -168,12 +168,12 @@
                             {{ row.plan.summary or '—' }}
                         </span>
                     </td>
-                    <td>{% if row.budgeted %}R$ {{ '%.2f'|format(row.budgeted) }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-                    <td>{% if row.adjusted %}R$ {{ '%.2f'|format(row.adjusted) }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-                    <td>R$ {{ '%.2f'|format(row.realized) }}</td>
-                    <td class="text-primary">{% if row.pr_committed %}R$ {{ '%.2f'|format(row.pr_committed) }}{% else %}—{% endif %}</td>
+                    <td>{% if row.budgeted %}{{ row.budgeted|brl }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>{% if row.adjusted %}{{ row.adjusted|brl }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>{{ row.realized|brl }}</td>
+                    <td class="text-primary">{% if row.pr_committed %}{{ row.pr_committed|brl }}{% else %}—{% endif %}</td>
                     <td class="fw-bold {% if row.available < 0 %}text-danger{% else %}text-success{% endif %}">
-                        R$ {{ '%.2f'|format(row.available) }}
+                        {{ row.available|brl }}
                     </td>
                     <td>
                         {% if row.budgeted > 0 %}
