@@ -1,329 +1,403 @@
-# Guia de Deploy Local — Sistema de Controle de Estoque
+# Guia de Instalação — Sistema de Controle de Estoque
+### Para a equipe de TI
 
-Este guia explica como instalar e executar o sistema em um servidor local da empresa,
-substituindo o ambiente Render (nuvem) por um servidor próprio com SQLite.
-
----
-
-## Requisitos do Servidor
-
-| Item | Mínimo | Recomendado |
-|------|--------|-------------|
-| Sistema Operacional | Windows 10/11, Ubuntu 20.04+, Debian 11+ | Ubuntu 22.04 LTS |
-| Python | 3.10 | 3.11 ou 3.12 |
-| RAM | 1 GB livre | 2 GB+ |
-| Disco | 500 MB livre | 2 GB+ |
-| Rede | Acesso à rede local | IP fixo na rede |
-
-> **Nota:** O sistema usa SQLite como banco de dados — não é necessário instalar PostgreSQL, MySQL ou qualquer outro servidor de banco de dados.
+Este documento ensina a instalar e colocar o sistema em funcionamento em um servidor
+ou computador da empresa. Após a instalação, qualquer pessoa na rede poderá acessar
+o sistema pelo navegador, sem instalar nada.
 
 ---
 
-## 1. Instalar o Python
+## O que você vai precisar
+
+| Item | Detalhe |
+|------|---------|
+| Um computador/servidor que fique ligado | Windows 10/11 ou Ubuntu 20.04+ |
+| Python 3.11 ou 3.12 instalado | Instruções no Passo 1 |
+| Git instalado | Instruções no Passo 2 |
+| Acesso à internet (só na instalação) | Para baixar o código e dependências |
+| O endereço do repositório GitHub | `https://github.com/Murilo-Fruttuoso/inventory-system` |
+
+---
+
+## Passo 1 — Instalar o Python
 
 ### Windows
-1. Acesse https://www.python.org/downloads/ e baixe o Python 3.11 ou 3.12
-2. Execute o instalador e marque **"Add Python to PATH"** antes de clicar em Install
-3. Verifique a instalação: abra o Prompt de Comando (cmd) e execute:
+
+1. Acesse: **https://www.python.org/downloads/**
+2. Clique no botão amarelo para baixar a versão mais recente (3.12.x)
+3. Execute o instalador
+4. **IMPORTANTE:** na primeira tela do instalador, marque a opção **"Add Python to PATH"**
+5. Clique em **"Install Now"**
+6. Quando terminar, abra o **Prompt de Comando** (tecla Windows → digite `cmd` → Enter)
+7. Digite e pressione Enter:
    ```
    python --version
    ```
+   Deve aparecer algo como `Python 3.12.x` — se aparecer, está correto.
 
-### Ubuntu / Debian
+### Ubuntu / Debian (Linux)
+
+Abra o terminal e execute:
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-pip python3-venv git
+sudo apt install -y python3 python3-pip python3-venv
 python3 --version
 ```
 
 ---
 
-## 2. Baixar o Código-Fonte
+## Passo 2 — Instalar o Git
 
-### Opção A — Via Git (recomendado, permite atualizações fáceis)
+### Windows
+
+1. Acesse: **https://git-scm.com/download/win**
+2. Baixe e execute o instalador — pode clicar em **"Next"** em todas as telas
+3. Após instalar, abra o **Prompt de Comando** e verifique:
+   ```
+   git --version
+   ```
+
+### Ubuntu / Debian (Linux)
 
 ```bash
-git clone https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git inventory-system
-cd inventory-system
+sudo apt install -y git
 ```
-
-> Substitua a URL pelo endereço real do repositório. Se o repositório for privado, você precisará de credenciais Git.
-
-### Opção B — Arquivo ZIP
-
-1. Faça o download do ZIP do repositório
-2. Extraia em uma pasta de sua escolha, por exemplo: `C:\sistemas\inventory-system` (Windows) ou `/opt/inventory-system` (Linux)
-3. Abra o terminal e navegue até a pasta extraída
 
 ---
 
-## 3. Criar o Ambiente Virtual Python
+## Passo 3 — Baixar o código do sistema
 
-O ambiente virtual isola as dependências do sistema para não conflitar com outros programas.
+Escolha uma pasta onde o sistema vai ficar instalado. Exemplos:
+- Windows: `C:\sistemas\`
+- Linux: `/opt/`
 
-### Windows (Prompt de Comando ou PowerShell)
+### Windows
+
+Abra o Prompt de Comando e execute:
+```cmd
+mkdir C:\sistemas
+cd C:\sistemas
+git clone https://github.com/Murilo-Fruttuoso/inventory-system.git
+cd inventory-system
+```
+
+### Linux
+
+```bash
+sudo mkdir -p /opt
+cd /opt
+sudo git clone https://github.com/Murilo-Fruttuoso/inventory-system.git
+sudo chown -R $USER:$USER /opt/inventory-system
+cd /opt/inventory-system
+```
+
+---
+
+## Passo 4 — Criar o ambiente virtual Python
+
+O ambiente virtual isola as dependências do sistema. Execute dentro da pasta do projeto:
+
+### Windows
 ```cmd
 cd C:\sistemas\inventory-system
 python -m venv venv
 venv\Scripts\activate
 ```
 
-### Linux / macOS
+### Linux
 ```bash
 cd /opt/inventory-system
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-> Você saberá que o ambiente está ativo quando o prompt mostrar `(venv)` na frente.
+> Você saberá que funcionou quando aparecer `(venv)` no início da linha do terminal.
 
 ---
 
-## 4. Instalar as Dependências
+## Passo 5 — Instalar as dependências
 
-Com o ambiente virtual ativo:
+Com o ambiente virtual **ativo** (aparece `(venv)` no terminal):
 
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-> A instalação pode levar alguns minutos na primeira vez.
+> Isso vai baixar e instalar automaticamente tudo que o sistema precisa.
+> Pode levar de 2 a 5 minutos dependendo da velocidade da internet.
 
 ---
 
-## 5. Configurar o Arquivo `.env`
+## Passo 6 — Criar o arquivo de configuração
 
-Crie (ou edite) o arquivo `.env` na raiz do projeto. Ele não deve ser commitado no Git.
+O sistema lê as configurações de um arquivo chamado `.env` na pasta raiz do projeto.
 
-```bash
-# Linux/macOS
-cp .env.example .env   # se existir
-# OU crie manualmente:
-nano .env
+### Windows — crie com o Bloco de Notas
+
+1. Abra o Bloco de Notas
+2. Cole o conteúdo abaixo, **substituindo os valores em MAIÚSCULAS**:
+
 ```
-
-**Windows** — abra o bloco de notas e salve como `.env` na raiz do projeto.
-
-### Conteúdo do `.env` para uso local (SQLite):
-
-```ini
-# Chave secreta — TROQUE por uma string longa e aleatória em produção!
-# Gere uma: python -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY=troque-esta-chave-por-uma-segura-em-producao
-
-# Banco de dados: DEIXE EM BRANCO ou remova esta linha para usar SQLite local
-# Não coloque DATABASE_URL para não tentar conectar no PostgreSQL do Render
-DATABASE_URL=
-
-# Usuário administrador padrão (criado automaticamente no primeiro acesso)
+SECRET_KEY=uma-frase-longa-e-aleatoria-qualquer-troque-isso
 ADMIN_USER=admin
-ADMIN_PASSWORD=SenhaForte@2024
+ADMIN_PASSWORD=TROQUE_PELA_SENHA_DO_ADMINISTRADOR
 ADMIN_FULL_NAME=Administrador TI
-
-# Itens por página nas listagens
 ITEMS_PER_PAGE=20
 ```
 
-> **IMPORTANTE:** Não defina `DATABASE_URL` com valor `postgres://...`. Deixe em branco ou remova a linha para que o sistema use SQLite automaticamente.
+3. Salve como **`.env`** (com ponto na frente) dentro da pasta `C:\sistemas\inventory-system\`
+   - No Bloco de Notas: Arquivo → Salvar Como → mude "Tipo" para "Todos os arquivos" → nome: `.env`
+
+### Linux — crie via terminal
+
+```bash
+cd /opt/inventory-system
+nano .env
+```
+
+Cole o conteúdo abaixo, edite os valores e salve (Ctrl+O, Enter, Ctrl+X):
+
+```
+SECRET_KEY=uma-frase-longa-e-aleatoria-qualquer-troque-isso
+ADMIN_USER=admin
+ADMIN_PASSWORD=TROQUE_PELA_SENHA_DO_ADMINISTRADOR
+ADMIN_FULL_NAME=Administrador TI
+ITEMS_PER_PAGE=20
+```
+
+> **Não coloque a linha `DATABASE_URL`** — sem ela, o sistema usa SQLite automaticamente
+> e o banco de dados fica salvo permanentemente na pasta `instance/estoque.db`.
 
 ---
 
-## 6. Migrar os Dados do Render (PostgreSQL → SQLite)
+## Passo 7 — Testar se o sistema funciona
 
-> **Pule esta seção se for uma instalação do zero (banco vazio).**
+Com o ambiente virtual ativo, execute:
 
-Se você tem dados no Render que precisa migrar para o servidor local:
-
-### 6.1 Exportar do Render
-
-No painel do Render, acesse o serviço PostgreSQL → **Backups** → faça o download do dump mais recente.
-
-Ou via linha de comando (com `pg_dump` instalado):
-```bash
-pg_dump "postgresql://USER:SENHA@HOST:PORT/DBNAME" \
-  --format=plain --no-owner --no-privileges \
-  --file=backup_render.sql
-```
-
-### 6.2 Converter para SQLite
-
-O dump PostgreSQL não é diretamente compatível com SQLite. Use o script de migração incluído:
-
-```bash
-# Com o ambiente virtual ativo
-python migrate.py
-```
-
-Ou entre em contato com o desenvolvedor para fazer a migração assistida.
-
-### 6.3 Alternativa: Usar o Backup SQLite do Sistema
-
-Se você usou o botão **"Backup SQLite"** no painel de Relatórios enquanto o sistema ainda estava em modo SQLite local, copie o arquivo `estoque.db` para a pasta `instance/`:
-
-```bash
-cp /caminho/do/backup/estoque.db instance/estoque.db
-```
-
----
-
-## 7. Iniciar o Sistema
-
-### Modo Desenvolvimento (testes, não usar em produção)
-
-```bash
-# Com o ambiente virtual ativo
+### Windows
+```cmd
+cd C:\sistemas\inventory-system
+venv\Scripts\activate
 python run.py
 ```
 
-O sistema estará disponível em: **http://localhost:5000**
-
-### Modo Produção com Waitress (Windows — recomendado)
-
-`waitress` já está nas dependências e funciona bem no Windows sem configuração adicional:
-
+### Linux
 ```bash
-# Com o ambiente virtual ativo
-waitress-serve --host=0.0.0.0 --port=8080 "run:app"
+cd /opt/inventory-system
+source venv/bin/activate
+python run.py
 ```
 
-O sistema estará disponível em: **http://IP_DO_SERVIDOR:8080**
+Você deve ver algo como:
+```
+ * Running on http://0.0.0.0:5000
+ * Press CTRL+C to quit
+```
 
-### Modo Produção com Gunicorn (Linux — recomendado)
+Abra o navegador no mesmo computador e acesse: **http://localhost:5000**
+
+O sistema vai aparecer com a tela de login. Use:
+- **Usuário:** o valor que você colocou em `ADMIN_USER` (ex: `admin`)
+- **Senha:** o valor que você colocou em `ADMIN_PASSWORD`
+
+Se o login funcionar, o sistema está instalado corretamente. Pressione **Ctrl+C** no
+terminal para parar — vamos configurar o modo produção no próximo passo.
+
+---
+
+## Passo 8 — Rodar em modo produção (acesso pela rede)
+
+O `python run.py` serve para testes. Para uso real, use o **Waitress** (Windows) ou
+**Gunicorn** (Linux), que já estão incluídos nas dependências.
+
+### Windows — Waitress
+
+Com o ambiente virtual ativo:
+```cmd
+cd C:\sistemas\inventory-system
+venv\Scripts\activate
+waitress-serve --host=0.0.0.0 --port=8080 run:app
+```
+
+### Linux — Gunicorn
 
 ```bash
-# Com o ambiente virtual ativo
+cd /opt/inventory-system
+source venv/bin/activate
 gunicorn --bind 0.0.0.0:8080 --workers 2 --timeout 120 run:app
 ```
 
----
+O sistema agora está acessível em qualquer computador da rede pelo endereço:
+**http://IP_DO_SERVIDOR:8080**
 
-## 8. Acesso pela Rede Local
-
-Para que outros computadores da empresa acessem o sistema:
-
-1. **Descubra o IP do servidor:**
-   - Windows: `ipconfig` no cmd → procure "Endereço IPv4"
-   - Linux: `ip addr show` ou `hostname -I`
-
-2. **Libere a porta no firewall:**
-
-   **Windows:**
-   ```
-   netsh advfirewall firewall add rule name="Estoque App" dir=in action=allow protocol=TCP localport=8080
-   ```
-
-   **Ubuntu/Debian:**
-   ```bash
-   sudo ufw allow 8080/tcp
-   ```
-
-3. **Acesso dos outros PCs:** abra o navegador e acesse `http://192.168.X.X:8080`
-   (substitua pelo IP real do servidor)
+Para descobrir o IP do servidor:
+- Windows: abra o cmd e execute `ipconfig` → procure "Endereço IPv4"
+- Linux: execute `hostname -I`
 
 ---
 
-## 9. Executar como Serviço (início automático)
+## Passo 9 — Liberar a porta no firewall
 
-Para que o sistema inicie automaticamente quando o servidor ligar:
+Para que outros computadores consigam acessar o sistema:
 
-### Windows — Usando NSSM (Non-Sucking Service Manager)
+### Windows
 
-1. Baixe o NSSM: https://nssm.cc/download
-2. Extraia e abra um prompt de comando como **Administrador**
-3. Execute:
+Abra o **Prompt de Comando como Administrador** e execute:
+```cmd
+netsh advfirewall firewall add rule name="Sistema Estoque" dir=in action=allow protocol=TCP localport=8080
+```
+
+### Linux (Ubuntu com ufw)
+
+```bash
+sudo ufw allow 8080/tcp
+sudo ufw reload
+```
+
+---
+
+## Passo 10 — Fazer o sistema iniciar automaticamente
+
+Para que o sistema suba sozinho quando o servidor for ligado ou reiniciado:
+
+### Windows — usando NSSM
+
+**NSSM** é uma ferramenta gratuita que transforma qualquer programa em serviço do Windows.
+
+1. Baixe o NSSM em: **https://nssm.cc/download**
+2. Extraia o ZIP e copie o arquivo `nssm.exe` (da pasta `win64`) para `C:\Windows\System32\`
+3. Abra o **Prompt de Comando como Administrador**
+4. Execute:
    ```cmd
-   nssm install InventarioEstoque
+   nssm install SistemaEstoque
    ```
-4. Na tela que abrir, configure:
+5. Uma janela vai abrir. Preencha:
    - **Path:** `C:\sistemas\inventory-system\venv\Scripts\waitress-serve.exe`
-   - **Arguments:** `--host=0.0.0.0 --port=8080 run:app`
    - **Startup directory:** `C:\sistemas\inventory-system`
-5. Clique em **Install service**
-6. Inicie o serviço:
+   - **Arguments:** `--host=0.0.0.0 --port=8080 run:app`
+6. Clique na aba **"Environment"** e adicione:
+   ```
+   PATH=C:\sistemas\inventory-system\venv\Scripts;C:\Windows\System32
+   ```
+7. Clique em **"Install service"**
+8. Inicie o serviço:
    ```cmd
-   nssm start InventarioEstoque
+   nssm start SistemaEstoque
+   ```
+9. Para verificar se está rodando:
+   ```cmd
+   nssm status SistemaEstoque
    ```
 
-### Linux — Usando systemd
+A partir de agora o sistema inicia automaticamente com o Windows.
 
-Crie o arquivo de serviço:
+### Linux — usando systemd
 
-```bash
-sudo nano /etc/systemd/system/estoque.service
-```
+1. Crie o arquivo de serviço:
+   ```bash
+   sudo nano /etc/systemd/system/estoque.service
+   ```
 
-Conteúdo do arquivo:
+2. Cole o conteúdo abaixo (ajuste o caminho e usuário se necessário):
+   ```ini
+   [Unit]
+   Description=Sistema de Controle de Estoque
+   After=network.target
 
-```ini
-[Unit]
-Description=Sistema de Controle de Estoque
-After=network.target
+   [Service]
+   Type=simple
+   User=NOME_DO_USUARIO_DO_SERVIDOR
+   WorkingDirectory=/opt/inventory-system
+   Environment="PATH=/opt/inventory-system/venv/bin"
+   ExecStart=/opt/inventory-system/venv/bin/gunicorn \
+       --bind 0.0.0.0:8080 \
+       --workers 2 \
+       --timeout 120 \
+       run:app
+   Restart=on-failure
+   RestartSec=5s
 
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/opt/inventory-system
-Environment="PATH=/opt/inventory-system/venv/bin"
-ExecStart=/opt/inventory-system/venv/bin/gunicorn \
-    --bind 0.0.0.0:8080 \
-    --workers 2 \
-    --timeout 120 \
-    run:app
-Restart=on-failure
-RestartSec=5s
+   [Install]
+   WantedBy=multi-user.target
+   ```
+   > Substitua `NOME_DO_USUARIO_DO_SERVIDOR` pelo usuário Linux que instalou o sistema (ex: `ubuntu`, `user`, `ti`)
 
-[Install]
-WantedBy=multi-user.target
-```
-
-Ative e inicie o serviço:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable estoque
-sudo systemctl start estoque
-sudo systemctl status estoque
-```
-
----
-
-## 10. Backup dos Dados
-
-### Backup pelo Sistema (recomendado)
-
-No sistema, vá em **Relatórios → Backup SQLite** — disponível apenas para administradores.
-O download do arquivo `estoque.db` será iniciado automaticamente.
-
-> Este botão só aparece em modo SQLite local. Em PostgreSQL (Render) ele fica desabilitado.
-
-### Backup Manual
-
-Copie o arquivo `instance/estoque.db` para um local seguro (HD externo, NAS, etc.):
-
-```bash
-# Linux — copia com timestamp
-cp instance/estoque.db /backup/estoque_$(date +%Y%m%d_%H%M%S).db
-```
-
-**Windows — agendar backup automático:**
-1. Abra o **Agendador de Tarefas**
-2. Crie uma tarefa básica para copiar `instance\estoque.db` para uma pasta de backup
-3. Configure para rodar diariamente
+3. Ative e inicie:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable estoque
+   sudo systemctl start estoque
+   sudo systemctl status estoque
+   ```
+   Deve aparecer `Active: active (running)` em verde.
 
 ---
 
-## 11. Atualizações do Sistema
+## Criar usuários adicionais
 
-Quando houver novas versões do sistema:
+Após o primeiro acesso como administrador, crie os demais usuários pelo próprio sistema:
+
+1. Acesse o sistema no navegador
+2. Faça login como administrador
+3. Clique em **Admin → Usuários** no menu superior
+4. Clique em **"Novo Usuário"**
+5. Preencha nome, usuário, senha e perfil de acesso
+
+### Perfis de acesso disponíveis
+
+| Perfil | O que pode fazer |
+|--------|-----------------|
+| **Administrador** | Acesso total, incluindo gestão de usuários |
+| **Aprovador** | Aprova solicitações de compra |
+| **Comprador** | Gerencia compras e orçamento |
+| **Solicitante** | Abre solicitações, vê estoque e relatórios (sem orçamento) |
+| **Usuário** | Somente dashboard e produtos |
+
+---
+
+## Backup dos dados
+
+O banco de dados fica salvo em: `instance/estoque.db` (dentro da pasta do projeto).
+
+### Pelo sistema (recomendado)
+
+1. Acesse o sistema como administrador
+2. Vá em **Relatórios**
+3. Clique no botão **"Backup SQLite"**
+4. O arquivo `estoque.db` será baixado para o seu computador
+
+### Backup manual — copiar o arquivo
+
+Simplesmente copie o arquivo `instance/estoque.db` para um HD externo, pendrive ou
+pasta de rede. Para restaurar, basta substituir o arquivo e reiniciar o serviço.
+
+### Agendamento automático no Windows (via Agendador de Tarefas)
+
+1. Crie um arquivo `backup_estoque.bat` com o conteúdo:
+   ```bat
+   @echo off
+   set ORIGEM=C:\sistemas\inventory-system\instance\estoque.db
+   set DESTINO=C:\backup\estoque_%date:~6,4%%date:~3,2%%date:~0,2%.db
+   copy "%ORIGEM%" "%DESTINO%"
+   ```
+2. Abra o **Agendador de Tarefas** do Windows
+3. Crie uma tarefa para executar esse `.bat` diariamente
+
+---
+
+## Atualizações do sistema
+
+Quando o desenvolvedor lançar uma atualização:
 
 ```bash
 # 1. Entre na pasta do projeto
-cd /opt/inventory-system   # ou C:\sistemas\inventory-system no Windows
+cd C:\sistemas\inventory-system     # Windows
+# cd /opt/inventory-system          # Linux
 
 # 2. Ative o ambiente virtual
-source venv/bin/activate   # Linux
-# venv\Scripts\activate   # Windows
+venv\Scripts\activate               # Windows
+# source venv/bin/activate          # Linux
 
 # 3. Baixe as atualizações
 git pull origin main
@@ -332,93 +406,55 @@ git pull origin main
 pip install -r requirements.txt
 
 # 5. Reinicie o serviço
-sudo systemctl restart estoque   # Linux com systemd
-# nssm restart InventarioEstoque  # Windows com NSSM
+nssm restart SistemaEstoque         # Windows
+# sudo systemctl restart estoque    # Linux
 ```
 
-> O sistema aplica migrações de banco de dados automaticamente na inicialização — não é necessário executar scripts SQL manualmente.
+> O sistema aplica atualizações do banco de dados automaticamente na reinicialização.
+> Não é necessário executar nenhum script SQL manualmente.
 
 ---
 
-## 12. Solução de Problemas
+## Solução de problemas
 
-### Erro: "python não reconhecido como comando"
-- Windows: reinstale o Python marcando "Add Python to PATH"
-- Linux: use `python3` em vez de `python`
+### "python não é reconhecido como comando" (Windows)
+Reinstale o Python marcando **"Add Python to PATH"** na primeira tela do instalador.
 
-### Erro: "No module named 'flask'"
-- Verifique se o ambiente virtual está ativo (deve aparecer `(venv)` no prompt)
-- Execute novamente: `pip install -r requirements.txt`
+### "pip não é reconhecido como comando"
+Ative o ambiente virtual primeiro: `venv\Scripts\activate` (Windows) ou `source venv/bin/activate` (Linux).
 
-### Erro: "Address already in use" (porta ocupada)
-- Outro processo está usando a porta 8080. Troque para outra porta (ex: 8090):
-  ```bash
-  gunicorn --bind 0.0.0.0:8090 run:app
-  ```
-
-### Acesso negado ao arquivo `estoque.db`
-- Linux: verifique as permissões:
-  ```bash
-  chmod 664 instance/estoque.db
-  chown www-data:www-data instance/estoque.db
-  ```
-
-### Sistema abre mas mostra "Internal Server Error"
-- Verifique os logs:
-  ```bash
-  # Linux com systemd
-  journalctl -u estoque -n 50
-  # Ou diretamente
-  python run.py   # mostra erros no terminal
-  ```
-
-### Esqueceu a senha do administrador
-- **Somente em emergência**, com acesso direto ao servidor:
-  ```bash
-  # Com o ambiente virtual ativo
-  python -c "
-  from app import create_app
-  from app.extensions import db
-  from app.models import User
-  app = create_app()
-  with app.app_context():
-      u = User.query.filter_by(username='admin').first()
-      u.set_password('NovaSenha@2024')
-      db.session.commit()
-      print('Senha alterada com sucesso.')
-  "
-  ```
-
----
-
-## 13. Estrutura de Arquivos
-
+### O sistema abre mas mostra "Internal Server Error"
+Verifique os logs. Com o ambiente virtual ativo, pare o serviço e rode manualmente:
+```bash
+python run.py
 ```
-inventory-system/
-├── app/                  # Código principal da aplicação
-│   ├── __init__.py       # Fábrica da app Flask
-│   ├── models.py         # Modelos do banco de dados
-│   ├── routes.py         # Rotas principais (dashboard, movimentações, relatórios)
-│   ├── routes_purchasing.py   # Módulo de compras
-│   ├── routes_budget.py  # Módulo de orçamento e fornecedores
-│   └── ...
-├── templates/            # Arquivos HTML (Jinja2)
-├── static/               # CSS, JS, imagens
-├── instance/             # Pasta gerada automaticamente
-│   └── estoque.db        # Banco de dados SQLite (NÃO versionar)
-├── .env                  # Configurações locais (NÃO versionar)
-├── requirements.txt      # Dependências Python
-├── run.py                # Ponto de entrada
-└── config.py             # Configurações da aplicação
+O erro aparecerá no terminal.
+
+### Não consigo acessar de outro computador
+Verifique se o firewall está liberado (Passo 9) e se está usando o IP correto do servidor.
+
+### Esqueci a senha do administrador
+Com o ambiente virtual ativo, execute:
+```bash
+python -c "
+from app import create_app
+from app.extensions import db
+from app.models import User
+app = create_app()
+with app.app_context():
+    u = User.query.filter_by(username='admin').first()
+    u.set_password('NovaSenha@2024')
+    db.session.commit()
+    print('Senha alterada.')
+"
+```
+
+### Verificar se o serviço está rodando
+```cmd
+nssm status SistemaEstoque          # Windows
+sudo systemctl status estoque       # Linux
 ```
 
 ---
 
-## 14. Informações de Contato e Suporte
-
-Para dúvidas técnicas sobre o sistema, entre em contato com o desenvolvedor responsável ou
-consulte o histórico de alterações no repositório Git.
-
----
-
-*Última atualização: Junho 2026*
+*Sistema: Controle de Estoque — repositório: https://github.com/Murilo-Fruttuoso/inventory-system*
