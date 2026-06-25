@@ -176,7 +176,7 @@
                                 <td><span class="badge text-bg-secondary">{{ movement.store or movement.product.store or '-' }}</span></td>
                                 <td>{{ 'Entrada' if movement.direction == 'IN' else 'Saída' }} / {{ movement.reason }}</td>
                                 <td>{{ movement.quantity|brl }}</td>
-                                <td>{{ (movement.product.unit_value or 0) * movement.quantity|brl }}</td>
+                                <td>{{ ((movement.product.unit_value or 0) * movement.quantity)|brl }}</td>
                             </tr>
                             {% else %}
                             <tr><td colspan="6" class="text-center text-muted py-3">Sem dados para os filtros.</td></tr>

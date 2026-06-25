@@ -96,7 +96,7 @@
                     <td>{{ movement.reason }}</td>
                     <td>{{ movement.quantity|brl }}</td>
                     <td>{{ (movement.product.unit_value or 0)|brl }}</td>
-                    <td>{{ (movement.product.unit_value or 0) * movement.quantity|brl }}</td>
+                    <td>{{ ((movement.product.unit_value or 0) * movement.quantity)|brl }}</td>
                     <td>{{ movement.previous_quantity|brl }} → {{ movement.new_quantity|brl }}</td>
                     <td>{{ movement.user.full_name }}</td>
                     {% if current_user.role == 'admin' %}

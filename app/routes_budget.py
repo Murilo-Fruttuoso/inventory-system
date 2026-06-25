@@ -963,50 +963,132 @@ def budget_report():
 @login_required
 @buyer_required
 def suppliers_panel():
-    from sqlalchemy import case
-    from datetime import timedelta
+    """Painel de fornecedores.
 
-    # Filtros
+    Inclui duas fontes de dados:
+    1. Cotações formais (Quotation.is_selected=True) vinculadas a PRs aprovadas/compradas.
+    2. PRs aprovadas/compradas SEM cotação formal, usando exclusive_supplier_name
+       (PRs importadas do Forms ou com fornecedor exclusivo sem cotação).
+    """
+    # Filtros de data
     date_from_str = request.args.get("date_from", "")
     date_to_str = request.args.get("date_to", "")
-    page = request.args.get("page", 1, type=int)
 
-    # Base query: cotações selecionadas de solicitações aprovadas/compradas
-    q = db.session.query(
-        Quotation.supplier,
-        func.count(Quotation.id).label("qty"),
-        func.sum(Quotation.total_value).label("total"),
-    ).join(PurchaseRequest).filter(
-        Quotation.is_selected == True,
-        PurchaseRequest.status.in_(["approved", "purchased"]),
-    )
-
+    date_from = None
+    date_to = None
     if date_from_str:
         try:
-            q = q.filter(
-                PurchaseRequest.purchase_date >= datetime.strptime(date_from_str, "%Y-%m-%d")
-            )
+            date_from = datetime.strptime(date_from_str, "%Y-%m-%d")
         except ValueError:
             pass
     if date_to_str:
         try:
-            q = q.filter(
-                PurchaseRequest.purchase_date <= datetime.strptime(date_to_str, "%Y-%m-%d")
-            )
+            date_to = datetime.strptime(date_to_str, "%Y-%m-%d")
         except ValueError:
             pass
 
-    supplier_rows = (
-        q.group_by(Quotation.supplier)
-        .order_by(func.sum(Quotation.total_value).desc())
-        .all()
+    # ── Fonte 1: cotações formais selecionadas ──────────────────────────
+    q_formal = (
+        db.session.query(
+            Quotation.supplier.label("supplier"),
+            func.count(Quotation.id).label("qty"),
+            func.sum(Quotation.total_value).label("total"),
+        )
+        .join(PurchaseRequest)
+        .filter(
+            Quotation.is_selected == True,
+            PurchaseRequest.status.in_(["approved", "purchased"]),
+        )
+    )
+    if date_from:
+        q_formal = q_formal.filter(PurchaseRequest.purchase_date >= date_from)
+    if date_to:
+        q_formal = q_formal.filter(PurchaseRequest.purchase_date <= date_to)
+
+    formal_rows = q_formal.group_by(Quotation.supplier).all()
+
+    # ── Fonte 2: PRs sem cotação formal mas com fornecedor registrado ──
+    # Considera PRs que não têm nenhuma cotação is_selected=True
+    # e têm exclusive_supplier_name preenchido
+    subq_has_selected = (
+        db.session.query(Quotation.purchase_request_id)
+        .filter(Quotation.is_selected == True)
+        .subquery()
+    )
+    q_no_quote = (
+        db.session.query(PurchaseRequest)
+        .filter(
+            PurchaseRequest.status.in_(["approved", "purchased"]),
+            PurchaseRequest.exclusive_supplier_name.isnot(None),
+            PurchaseRequest.exclusive_supplier_name != "",
+            ~PurchaseRequest.id.in_(
+                db.session.query(subq_has_selected.c.purchase_request_id)
+            ),
+        )
+    )
+    if date_from:
+        q_no_quote = q_no_quote.filter(PurchaseRequest.purchase_date >= date_from)
+    if date_to:
+        q_no_quote = q_no_quote.filter(PurchaseRequest.purchase_date <= date_to)
+
+    no_quote_prs = q_no_quote.all()
+
+    # Agrupa PRs sem cotação por nome do fornecedor
+    no_quote_map = {}  # supplier_name -> {qty, total}
+    for pr in no_quote_prs:
+        sup = pr.exclusive_supplier_name.strip()
+        if not sup:
+            continue
+        val = pr.total_approved or pr.total_estimated or 0
+        if sup not in no_quote_map:
+            no_quote_map[sup] = {"qty": 0, "total": 0.0}
+        no_quote_map[sup]["qty"] += 1
+        no_quote_map[sup]["total"] += val
+
+    # ── Combina as duas fontes ──────────────────────────────────────────
+    combined = {}  # supplier_name -> {qty, total}
+
+    for row in formal_rows:
+        sup = row.supplier or "Desconhecido"
+        combined[sup] = {
+            "supplier": sup,
+            "qty": (row.qty or 0),
+            "total": (row.total or 0.0),
+        }
+
+    for sup, data in no_quote_map.items():
+        if sup in combined:
+            combined[sup]["qty"] += data["qty"]
+            combined[sup]["total"] += data["total"]
+        else:
+            combined[sup] = {
+                "supplier": sup,
+                "qty": data["qty"],
+                "total": data["total"],
+            }
+
+    # Converte para lista ordenada por total decrescente
+    # Cria namedtuple-like objects para compatibilidade com o template
+    from collections import namedtuple
+    SupplierRow = namedtuple("SupplierRow", ["supplier", "qty", "total"])
+    supplier_rows = sorted(
+        [SupplierRow(**v) for v in combined.values()],
+        key=lambda r: r.total,
+        reverse=True,
     )
 
-    # Detalhes recentes por fornecedor (para drill-down)
+    total_spend = sum(r.total or 0 for r in supplier_rows)
+
+    # ── Detalhe por fornecedor (drill-down) ────────────────────────────
     top_supplier = request.args.get("supplier", "")
-    supplier_detail = []
+    supplier_detail = []  # lista de (PurchaseRequest, QuotationLike)
+
     if top_supplier:
-        supplier_detail = (
+        # Namedtuple que imita os campos de Quotation usados no template
+        FakeQuotation = namedtuple("FakeQuotation", ["total_value"])
+
+        # Detalhe via cotações formais
+        formal_detail = (
             db.session.query(PurchaseRequest, Quotation)
             .join(Quotation, Quotation.purchase_request_id == PurchaseRequest.id)
             .filter(
@@ -1018,8 +1100,31 @@ def suppliers_panel():
             .limit(20)
             .all()
         )
+        supplier_detail.extend(formal_detail)
 
-    total_spend = sum(r.total or 0 for r in supplier_rows)
+        # Detalhe via PRs sem cotação formal
+        if len(supplier_detail) < 20:
+            no_quote_detail = (
+                db.session.query(PurchaseRequest)
+                .filter(
+                    PurchaseRequest.status.in_(["approved", "purchased"]),
+                    PurchaseRequest.exclusive_supplier_name == top_supplier,
+                    ~PurchaseRequest.id.in_(
+                        db.session.query(subq_has_selected.c.purchase_request_id)
+                    ),
+                )
+                .order_by(PurchaseRequest.purchase_date.desc())
+                .limit(20 - len(supplier_detail))
+                .all()
+            )
+            for pr in no_quote_detail:
+                val = pr.total_approved or pr.total_estimated or 0
+                supplier_detail.append((pr, FakeQuotation(total_value=val)))
+
+        # Ordena tudo por data
+        supplier_detail.sort(
+            key=lambda x: x[0].purchase_date or datetime.min, reverse=True
+        )
 
     return render_template(
         "budget/suppliers.html",
