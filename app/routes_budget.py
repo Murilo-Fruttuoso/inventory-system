@@ -2,6 +2,7 @@
 Rotas do módulo de Plano de Contas e Orçamento.
 Blueprint: budget_bp  (prefixo /budget)
 """
+import os
 from datetime import datetime
 
 from flask import (
@@ -14,12 +15,18 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import func
+from sqlalchemy import extract, func
 
 from app.decorators import admin_required, buyer_required
 from app.extensions import db
 from app.models import AccountPlan, Budget, MonthlyBudget, PurchaseRequest, Quotation
 from app.services import log_action, parse_number
+
+
+def _is_postgres():
+    """Retorna True se o banco configurado é PostgreSQL."""
+    url = os.environ.get("DATABASE_URL", "")
+    return url.startswith("postgres")
 
 budget_bp = Blueprint("budget", __name__, url_prefix="/budget")
 
@@ -40,10 +47,15 @@ def overview():
     # Calcular total utilizado por plano (compras aprovadas/compradas)
     # Usa o total_approved da solicitação vinculada
     used_by_plan = {}
+    # Filtro de ano compatível com SQLite e PostgreSQL
+    if _is_postgres():
+        year_filter = extract("year", PurchaseRequest.purchase_date) == year
+    else:
+        year_filter = func.strftime("%Y", PurchaseRequest.purchase_date) == str(year)
     approved_requests = PurchaseRequest.query.filter(
         PurchaseRequest.status.in_(["approved", "purchased"]),
         PurchaseRequest.account_plan_id.isnot(None),
-        func.strftime("%Y", PurchaseRequest.purchase_date) == str(year),
+        year_filter,
     ).all()
 
     for pr in approved_requests:

@@ -407,6 +407,9 @@ def reports():
 
     low_stock_products = product_query_with_filters(low_only=True, store=stock_store).all()
 
+    db_path = sqlite_database_path()
+    is_sqlite = bool(db_path and os.path.exists(db_path))
+
     return render_template(
         "reports.html",
         categories=distinct_categories(),
@@ -425,6 +428,7 @@ def reports():
         movement_category=movement_category,
         movement_store=movement_store,
         selected_direction=direction,
+        is_sqlite=is_sqlite,
     )
 
 

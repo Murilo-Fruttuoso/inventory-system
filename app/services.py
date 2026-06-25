@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from io import BytesIO
 from typing import Dict, Iterable
 
 import pandas as pd
 from flask import current_app
-from sqlalchemy import func, or_
+from sqlalchemy import cast, Date, func, or_
 
 from app.extensions import db
 from app.models import ActionLog, Product, StockMovement
+
+
+def _is_postgres():
+    """Retorna True se o banco configurado é PostgreSQL."""
+    url = os.environ.get("DATABASE_URL", "")
+    return url.startswith("postgres")
 
 
 ALLOWED_IMPORT_EXTENSIONS = {".xlsx", ".xls"}
@@ -82,9 +89,10 @@ def product_query_with_filters(search_term="", category="", low_only=False, bran
 def movement_query_with_filters(start_date="", end_date="", product_id="", category="", direction="", store=""):
     query = StockMovement.query.join(Product).join(StockMovement.user)
     if start_date:
-        query = query.filter(func.date(StockMovement.created_at) >= start_date)
+        # cast para Date é compatível com SQLite e PostgreSQL
+        query = query.filter(cast(StockMovement.created_at, Date) >= start_date)
     if end_date:
-        query = query.filter(func.date(StockMovement.created_at) <= end_date)
+        query = query.filter(cast(StockMovement.created_at, Date) <= end_date)
     if product_id:
         query = query.filter(StockMovement.product_id == int(product_id))
     if category:

@@ -6,7 +6,15 @@
         <p class="text-muted mb-0">Geração de arquivos Excel com filtros por unidade, produto, categoria e período.</p>
     </div>
     {% if current_user.role == 'admin' %}
-    <a class="btn btn-outline-primary" href="{{ url_for('main.backup_download') }}">Backup simples</a>
+        {% if is_sqlite %}
+        <a class="btn btn-outline-primary" href="{{ url_for('main.backup_download') }}">
+            <i class="bi bi-download me-1"></i>Backup SQLite
+        </a>
+        {% else %}
+        <span class="btn btn-outline-secondary disabled" title="Backup disponível apenas em ambiente local (SQLite). Em produção use o painel do banco de dados.">
+            <i class="bi bi-download me-1"></i>Backup (N/D em PostgreSQL)
+        </span>
+        {% endif %}
     {% endif %}
 </div>
 
