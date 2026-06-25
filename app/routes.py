@@ -576,7 +576,7 @@ def users_new():
         user = User(
             username=username,
             full_name=full_name,
-            role=role if role in ("admin", "approver", "buyer", "user") else "user",
+            role=role if role in ("admin", "approver", "buyer", "requester", "user") else "user",
             is_active_user=is_active_user,
         )
         user.set_password(password)
@@ -613,7 +613,7 @@ def users_edit(user_id):
         user_obj.username = request.form.get("username", "").strip()
         user_obj.full_name = request.form.get("full_name", "").strip()
         _role = request.form.get("role", "user")
-        user_obj.role = _role if _role in ("admin", "approver", "buyer", "user") else "user"
+        user_obj.role = _role if _role in ("admin", "approver", "buyer", "requester", "user") else "user"
         user_obj.is_active_user = request.form.get("is_active_user") == "on"
         new_password = request.form.get("password", "")
 

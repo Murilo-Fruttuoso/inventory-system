@@ -77,7 +77,7 @@ def _ensure_user(db, username, full_name, password, role):
     user = User(
         username=username,
         full_name=full_name or username,
-        role=role if role in ("admin", "approver", "buyer", "user") else "user",
+        role=role if role in ("admin", "approver", "buyer", "requester", "user") else "user",
         is_active_user=True,
     )
     user.set_password(password)

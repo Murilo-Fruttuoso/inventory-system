@@ -36,6 +36,7 @@ budget_bp = Blueprint("budget", __name__, url_prefix="/budget")
 # -----------------------------------------------------------------------
 @budget_bp.route("/")
 @login_required
+@buyer_required
 def overview():
     year = request.args.get("year", datetime.utcnow().year, type=int)
     summary_type = request.args.get("type", "")  # DESPESAS / RECEITA / etc.
@@ -119,6 +120,7 @@ def overview():
 # -----------------------------------------------------------------------
 @budget_bp.route("/accounts")
 @login_required
+@buyer_required
 def accounts_list():
     page = request.args.get("page", 1, type=int)
     search = request.args.get("q", "").strip()

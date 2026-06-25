@@ -21,7 +21,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     full_name = db.Column(db.String(120), nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
-    # roles: admin | approver | buyer | user
+    # roles: admin | approver | buyer | requester | user
     role = db.Column(db.String(20), nullable=False, default="user", index=True)
     is_active_user = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -57,6 +57,12 @@ class User(UserMixin, db.Model):
     def is_buyer(self):
         """Comprador: acessa compras, orçamento, relatórios — não acessa admin."""
         return self.role in ("admin", "approver", "buyer")
+
+    @property
+    def is_requester(self):
+        """Solicitante: acessa dashboard, produtos, movimentações, relatórios e compras.
+        NÃO acessa orçamento nem admin."""
+        return self.role in ("admin", "approver", "buyer", "requester")
 
     @property
     def can_manage_users(self):

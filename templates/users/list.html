@@ -33,12 +33,14 @@
                             'primary' if user.role == 'admin'
                             else 'info' if user.role == 'approver'
                             else 'warning' if user.role == 'buyer'
+                            else 'success' if user.role == 'requester'
                             else 'secondary'
                         }}">
                             {{
                                 'Administrador' if user.role == 'admin'
                                 else 'Aprovador' if user.role == 'approver'
                                 else 'Comprador' if user.role == 'buyer'
+                                else 'Solicitante' if user.role == 'requester'
                                 else 'Usuário'
                             }}
                         </span>

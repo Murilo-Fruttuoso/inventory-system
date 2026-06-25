@@ -27,14 +27,17 @@
                     <div class="col-md-3">
                         <label class="form-label">Perfil</label>
                         <select class="form-select" name="role">
-                            <option value="user" {% if user_obj and user_obj.role == 'user' %}selected{% endif %}>Usuário (estoque)</option>
+                            <option value="user" {% if user_obj and user_obj.role == 'user' %}selected{% endif %}>Usuário (só estoque)</option>
+                            <option value="requester" {% if user_obj and user_obj.role == 'requester' %}selected{% endif %}>Solicitante</option>
                             <option value="buyer" {% if user_obj and user_obj.role == 'buyer' %}selected{% endif %}>Comprador</option>
                             <option value="approver" {% if user_obj and user_obj.role == 'approver' %}selected{% endif %}>Aprovador</option>
                             <option value="admin" {% if user_obj and user_obj.role == 'admin' %}selected{% endif %}>Administrador</option>
                         </select>
                         <div class="form-text">
-                            <strong>Comprador:</strong> compras, orçamentos, relatórios, importação.<br>
-                            <strong>Aprovador:</strong> tudo do Comprador + aprovar/rejeitar.<br>
+                            <strong>Usuário:</strong> só estoque (dashboard, produtos, movimentações, relatórios).<br>
+                            <strong>Solicitante:</strong> estoque + compras (criar/ver solicitações). Sem orçamento.<br>
+                            <strong>Comprador:</strong> tudo do Solicitante + orçamentos, relatórios, importação.<br>
+                            <strong>Aprovador:</strong> tudo do Comprador + aprovar/rejeitar solicitações.<br>
                             <strong>Admin:</strong> acesso total incl. usuários e logs.
                         </div>
                     </div>

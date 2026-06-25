@@ -30,8 +30,8 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('main.movements_list') }}"><i class="bi bi-arrow-left-right me-1"></i>Movimentações</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('main.reports') }}"><i class="bi bi-file-earmark-chart me-1"></i>Relatórios</a></li>
 
-                <!-- Compras (visível para buyer+) -->
-                {% if current_user.role in ('admin', 'approver', 'buyer') %}
+                <!-- Compras (visível para buyer+ e requester) -->
+                {% if current_user.role in ('admin', 'approver', 'buyer', 'requester') %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                         <i class="bi bi-cart3 me-1"></i>Compras
@@ -58,7 +58,7 @@
                 </li>
                 {% endif %}
 
-                <!-- Orçamento (visível para buyer+) -->
+                <!-- Orçamento (visível para buyer+ apenas; requester NÃO acessa) -->
                 {% if current_user.role in ('admin', 'approver', 'buyer') %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -109,6 +109,7 @@
                         {% if current_user.role == 'admin' %}Administrador
                         {% elif current_user.role == 'approver' %}Aprovador
                         {% elif current_user.role == 'buyer' %}Comprador
+                        {% elif current_user.role == 'requester' %}Solicitante
                         {% else %}Usuário{% endif %}
                     </div>
                 </div>

@@ -41,3 +41,18 @@ def buyer_required(view_func):
         return view_func(*args, **kwargs)
 
     return wrapped_view
+
+
+def requester_required(view_func):
+    """Permite acesso a admin, approver, buyer e requester (Solicitante).
+    Solicitante: acessa Dashboard, Produtos, Movimentações, Relatórios e Compras.
+    NÃO acessa Orçamento nem Admin."""
+    @wraps(view_func)
+    def wrapped_view(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)
+        if current_user.role not in ("admin", "approver", "buyer", "requester"):
+            abort(403)
+        return view_func(*args, **kwargs)
+
+    return wrapped_view
